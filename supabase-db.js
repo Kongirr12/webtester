@@ -4,7 +4,7 @@ class SchoolDatabaseService {
     constructor() {
         this.supabase = null;
         this.demoMode = true;
-        this.dbConfig = { url: '', anonKey: '' };
+        this.dbConfig = { url: 'https://unoaadqtwxoolpxhuain.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVub2FhZHF0d3hvb2xweGh1YWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTg1NDUsImV4cCI6MjA5NzA3NDU0NX0.eoZ91qmDoS04-AIR4k9fAaCsErnsSRlqG3ibTXA64Uk' };
     }
 
     // Initialize Connection
