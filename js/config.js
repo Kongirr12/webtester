@@ -1,6 +1,6 @@
 // กำหนดค่าการเชื่อมต่อ Supabase ของคุณที่นี่
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://unoaadqtwxoolpxhuain.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVub2FhZHF0d3hvb2xweGh1YWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTg1NDUsImV4cCI6MjA5NzA3NDU0NX0.eoZ91qmDoS04-AIR4k9fAaCsErnsSRlqG3ibTXA64Uk";
 
 // ตรวจสอบว่าได้ตั้งค่า Supabase เรียบร้อยแล้วหรือยัง
 function checkSupabaseConfig() {
