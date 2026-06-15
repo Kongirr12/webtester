@@ -217,7 +217,7 @@ class SchoolHubApp {
         const isBackendView = this.currentView.startsWith('backend/');
         if (isBackendView) {
             const renderKey = this.currentView.replace('backend/', '');
-            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation'];
+            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation', 'homepage'];
             if (role === 'Teacher' && adminOnlyKeys.includes(renderKey)) {
                 window.location.hash = 'backend/dashboard';
             } else {
@@ -251,7 +251,7 @@ class SchoolHubApp {
 
             // Verify role access for backend page
             const renderKey = hash.replace('backend/', '');
-            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation'];
+            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation', 'homepage'];
             if (sessionRole === 'Teacher' && adminOnlyKeys.includes(renderKey)) {
                 window.location.hash = 'backend/dashboard';
                 return;
@@ -331,13 +331,18 @@ class SchoolHubApp {
 
             // Strip "backend/" prefix if present
             let renderKey = view;
-            if (view.startsWith('backend/')) {
+            if (view === 'backend/homepage') {
+                renderKey = 'backend-homepage';
+            } else if (view.startsWith('backend/')) {
                 renderKey = view.replace('backend/', '');
             }
 
             switch(renderKey) {
                 case 'homepage':
                     await this.renderHomepage();
+                    break;
+                case 'backend-homepage':
+                    await this.renderBackendHomepage();
                     break;
                 case 'login':
                     await this.renderLogin();
@@ -404,22 +409,7 @@ class SchoolHubApp {
         const links = await window.dbService.getQuickLinks();
         
         this.homepageConfigs = await window.dbService.getHomepageConfigs();
-        const isVisible = (key) => this.homepageConfigs[key] !== false || this.cmsEditMode;
-
-        const renderCmsControls = (key, title, addBtnId = '', addBtnText = '') => {
-            if (!this.cmsEditMode) return '';
-            const checked = this.homepageConfigs[key] !== false ? 'checked' : '';
-            return `
-                <div class="cms-section-control">
-                    <span>${title}</span>
-                    <label class="switch-control" title="เปิด/ปิดการแสดงผลหน้าเว็บ">
-                        <input type="checkbox" ${checked} class="cms-section-toggle" data-section="${key}">
-                        <span class="switch-slider"></span>
-                    </label>
-                    ${addBtnId ? `<button type="button" class="cms-btn-action" id="${addBtnId}"><i data-lucide="plus" style="width:12px;height:12px;"></i> ${addBtnText}</button>` : ''}
-                </div>
-            `;
-        };
+        const isVisible = (key) => this.homepageConfigs[key] !== false;
 
         let portalHTML = `
             <div class="page-header">
@@ -432,7 +422,6 @@ class SchoolHubApp {
 
         // 1. Banner Carousel Section
         if (isVisible('banner')) {
-            const displayStyle = this.homepageConfigs['banner'] === false ? 'style="opacity: 0.5;"' : '';
             let bannerSlidesHTML = '';
             let dotsHTML = '';
             
@@ -452,7 +441,6 @@ class SchoolHubApp {
                             <img src="${b.image_url}" onerror="this.src='https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=1200&q=80'">
                             <div class="banner-overlay">
                                 <h2 class="banner-title">${b.title}</h2>
-                                ${this.cmsEditMode ? `<button class="btn btn-danger btn-sm btn-delete-banner" data-id="${b.id}" style="margin-top:0.5rem; padding: 0.2rem 0.5rem;"><i data-lucide="trash-2" style="width:12px;height:12px;"></i> ลบ</button>` : ''}
                             </div>
                         </div>
                     `;
@@ -461,29 +449,25 @@ class SchoolHubApp {
             }
 
             portalHTML += `
-                <div class="cms-editable-section" ${displayStyle}>
-                    ${renderCmsControls('banner', 'แบนเนอร์สไลด์', 'btn-add-banner-cms', 'เพิ่มแบนเนอร์')}
-                    <div class="portal-banner">
-                        <div class="banner-track" id="banner-track" style="transform: translateX(0%);">
-                            ${bannerSlidesHTML}
-                        </div>
-                        <div class="banner-controls" id="banner-controls">
-                            ${dotsHTML}
-                        </div>
+                <div class="portal-banner">
+                    <div class="banner-track" id="banner-track" style="transform: translateX(0%);">
+                        ${bannerSlidesHTML}
+                    </div>
+                    <div class="banner-controls" id="banner-controls">
+                        ${dotsHTML}
                     </div>
                 </div>
             `;
         }
 
-        // 2. Main Columns Layout: Left (72%) vs Right (28%)
+        // 2. Main Columns Grid
         portalHTML += `<div class="homepage-grid">`;
 
-        // LEFT COLUMN (72%)
+        // LEFT COLUMN (72% split)
         portalHTML += `<div class="homepage-left-col" style="display: flex; flex-direction: column; gap: 2rem;">`;
 
         // A. News & Activities Section
         if (isVisible('news_activities')) {
-            const displayStyle = this.homepageConfigs['news_activities'] === false ? 'style="opacity: 0.5;"' : '';
             let newsCardsHTML = '';
             if (news.length === 0) {
                 newsCardsHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 2rem; color:var(--text-muted);">ไม่มีข้อมูลข่าวกิจกรรม</div>`;
@@ -500,13 +484,6 @@ class SchoolHubApp {
                                 </div>
                                 <h3 class="news-item-title">${n.title}</h3>
                                 <p class="news-item-excerpt">${n.content}</p>
-                                ${this.cmsEditMode ? `
-                                    <div class="news-item-actions">
-                                        <button class="btn btn-danger btn-sm btn-delete-news" data-id="${n.id}">
-                                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i> ลบข่าว
-                                        </button>
-                                    </div>
-                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -514,8 +491,7 @@ class SchoolHubApp {
             }
 
             portalHTML += `
-                <div class="cms-editable-section card" ${displayStyle}>
-                    ${renderCmsControls('news_activities', 'ข่าวกิจกรรม', 'btn-add-news-cms', 'เพิ่มข่าวใหม่')}
+                <div class="card">
                     <div class="card-header" style="margin-bottom:0.5rem;">
                         <h2><i data-lucide="newspaper" style="color:var(--color-primary);"></i> ข่าวสารและกิจกรรมโรงเรียน</h2>
                     </div>
@@ -528,7 +504,6 @@ class SchoolHubApp {
 
         // B. PR Newsletters Section
         if (isVisible('pr_newsletters')) {
-            const displayStyle = this.homepageConfigs['pr_newsletters'] === false ? 'style="opacity: 0.5;"' : '';
             let newslettersHTML = '';
             if (newsletters.length === 0) {
                 newslettersHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">ไม่มีจดหมายข่าวประชาสัมพันธ์</div>`;
@@ -539,14 +514,9 @@ class SchoolHubApp {
                             <img class="newsletter-thumbnail" src="${letter.image_url}" onerror="this.src='https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=500&q=80'">
                             <div class="newsletter-title">${letter.title}</div>
                             <div class="newsletter-actions">
-                                <a href="${letter.file_url || '#'}" target="_blank" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem; font-size:0.75rem;">
+                                <a href="${letter.file_url || '#'}" target="_blank" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem; font-size:0.75rem; text-decoration: none;">
                                     <i data-lucide="download" style="width:12px;height:12px;"></i> ดาวน์โหลด
                                 </a>
-                                ${this.cmsEditMode ? `
-                                    <button class="btn btn-danger btn-sm btn-delete-newsletter" data-id="${letter.id}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">
-                                        <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                                    </button>
-                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -554,8 +524,7 @@ class SchoolHubApp {
             }
 
             portalHTML += `
-                <div class="cms-editable-section card" ${displayStyle}>
-                    ${renderCmsControls('pr_newsletters', 'จดหมายข่าว', 'btn-add-newsletter-cms', 'เพิ่มจดหมายข่าว')}
+                <div class="card">
                     <div class="card-header" style="margin-bottom:0.5rem;">
                         <h2><i data-lucide="megaphone" style="color:var(--color-success);"></i> จดหมายข่าวประชาสัมพันธ์</h2>
                     </div>
@@ -568,44 +537,40 @@ class SchoolHubApp {
 
         // C. Facebook Page Section
         if (isVisible('facebook_embed')) {
-            const displayStyle = this.homepageConfigs['facebook_embed'] === false ? 'style="opacity: 0.5;"' : '';
             portalHTML += `
-                <div class="cms-editable-section" ${displayStyle}>
-                    ${renderCmsControls('facebook_embed', 'กล่องเฟสบุ๊ค')}
-                    <div class="fb-simulated-box">
-                        <div class="fb-header">
-                            <div class="fb-header-left">
-                                <div class="fb-logo-mock">f</div>
-                                <div class="fb-title-mock">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน (Facebook)</div>
-                            </div>
-                            <button class="fb-btn-like" onclick="window.open('https://facebook.com', '_blank')">
-                                <i data-lucide="thumbs-up" style="width:14px;height:14px;"></i> ติดตามเพจ
-                            </button>
+                <div class="fb-simulated-box">
+                    <div class="fb-header">
+                        <div class="fb-header-left">
+                            <div class="fb-logo-mock">f</div>
+                            <div class="fb-title-mock">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน (Facebook)</div>
                         </div>
-                        <div class="fb-body">
-                            <div class="fb-post">
-                                <div class="fb-post-header">
-                                    <div class="fb-post-avatar">🏫</div>
-                                    <div class="fb-post-meta">
-                                        <span class="fb-post-author">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน</span>
-                                        <span class="fb-post-time">1 ชั่วโมงที่แล้ว</span>
-                                    </div>
-                                </div>
-                                <div class="fb-post-content">
-                                    ประชาสัมพันธ์: กำหนดการแจกสมุดบัญชีรายรับ-จ่ายเงินเพื่อการศึกษา และการเข้าเรียนในวันพรุ่งนี้ ขอให้คุณครูและผู้ปกครองสลับบทบาทตรวจผลได้ในระบบของพอร์ทัลเว็บไซต์ครับ
+                        <button class="fb-btn-like" onclick="window.open('https://facebook.com', '_blank')">
+                            <i data-lucide="thumbs-up" style="width:14px;height:14px;"></i> ติดตามเพจ
+                        </button>
+                    </div>
+                    <div class="fb-body">
+                        <div class="fb-post">
+                            <div class="fb-post-header">
+                                <div class="fb-post-avatar">🏫</div>
+                                <div class="fb-post-meta">
+                                    <span class="fb-post-author">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน</span>
+                                    <span class="fb-post-time">1 ชั่วโมงที่แล้ว</span>
                                 </div>
                             </div>
-                            <div class="fb-post">
-                                <div class="fb-post-header">
-                                    <div class="fb-post-avatar">🏫</div>
-                                    <div class="fb-post-meta">
-                                        <span class="fb-post-author">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน</span>
-                                        <span class="fb-post-time">เมื่อวานนี้</span>
-                                    </div>
+                            <div class="fb-post-content">
+                                ประชาสัมพันธ์: กำหนดการแจกสมุดบัญชีรายรับ-จ่ายเงินเพื่อการศึกษา และการเข้าเรียนในวันพรุ่งนี้ ขอให้คุณครูและผู้ปกครองสลับบทบาทตรวจผลได้ในระบบของพอร์ทัลเว็บไซต์ครับ
+                            </div>
+                        </div>
+                        <div class="fb-post">
+                            <div class="fb-post-header">
+                                <div class="fb-post-avatar">🏫</div>
+                                <div class="fb-post-meta">
+                                    <span class="fb-post-author">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน</span>
+                                    <span class="fb-post-time">เมื่อวานนี้</span>
                                 </div>
-                                <div class="fb-post-content">
-                                    ขอแสดงความยินดีกับกลุ่มสาระวิทยาศาสตร์ที่ได้พัฒนา "คลังสื่อการเรียนรู้ออนไลน์" เพื่อให้นักเรียน ม.1 - ม.6 ดาวน์โหลดใบงานและเข้าดูคลิปทบทวนความรู้ได้ทุกวิชา! 💻📚
-                                </div>
+                            </div>
+                            <div class="fb-post-content">
+                                ขอแสดงความยินดีกับกลุ่มสาระวิทยาศาสตร์ที่ได้พัฒนา "คลังสื่อการเรียนรู้ออนไลน์" เพื่อให้นักเรียน ม.1 - ม.6 ดาวน์โหลดใบงานและเข้าดูคลิปทบทวนความรู้ได้ทุกวิชา! 💻📚
                             </div>
                         </div>
                     </div>
@@ -615,12 +580,11 @@ class SchoolHubApp {
 
         portalHTML += `</div>`; // End Left Column
 
-        // RIGHT COLUMN (28% SIDEBAR)
+        // RIGHT COLUMN (28% split)
         portalHTML += `<div class="homepage-right-col" style="display: flex; flex-direction: column; gap: 2rem;">`;
 
         // A. Executive Board Section
         if (isVisible('executives')) {
-            const displayStyle = this.homepageConfigs['executives'] === false ? 'style="opacity: 0.5;"' : '';
             let execsHTML = '';
             if (executives.length === 0) {
                 execsHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted);">ไม่มีข้อมูลผู้บริหาร</div>`;
@@ -635,21 +599,13 @@ class SchoolHubApp {
                                 <span class="executive-sidebar-name">${ex.name}</span>
                                 <span class="executive-sidebar-position">${ex.position}</span>
                             </div>
-                            ${this.cmsEditMode ? `
-                                <div class="executive-sidebar-actions">
-                                    <button class="btn btn-danger btn-sm btn-delete-executive" data-id="${ex.id}" style="padding: 2px 5px;">
-                                        <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                                    </button>
-                                </div>
-                            ` : ''}
                         </div>
                     `;
                 });
             }
 
             portalHTML += `
-                <div class="cms-editable-section card" ${displayStyle}>
-                    ${renderCmsControls('executives', 'ทำเนียบผู้บริหาร', 'btn-add-executive-cms', 'เพิ่มผู้บริหาร')}
+                <div class="card">
                     <div class="card-header" style="margin-bottom:1rem; padding-bottom:0.5rem;">
                         <h2><i data-lucide="user-check" style="color:var(--color-primary);"></i> ผู้บริหารโรงเรียน</h2>
                     </div>
@@ -662,7 +618,6 @@ class SchoolHubApp {
 
         // B. Quick Links Section
         if (isVisible('quick_links')) {
-            const displayStyle = this.homepageConfigs['quick_links'] === false ? 'style="opacity: 0.5;"' : '';
             const agencyLinks = links.filter(l => l.type === 'agency');
             let linksHTML = '';
             if (agencyLinks.length === 0) {
@@ -671,23 +626,17 @@ class SchoolHubApp {
                 agencyLinks.forEach(l => {
                     linksHTML += `
                         <div class="executive-sidebar-card" style="padding:0.6rem; align-items:center; gap:0.5rem;">
-                            <a href="${l.url}" target="_blank" class="link-sidebar-label" style="flex:1;">
+                            <a href="${l.url}" target="_blank" class="link-sidebar-label" style="flex:1; text-decoration:none;">
                                 <i data-lucide="${l.icon || 'link'}" style="width:16px;height:16px;color:var(--color-primary);flex-shrink:0;"></i>
                                 <span>${l.name}</span>
                             </a>
-                            ${this.cmsEditMode ? `
-                                <button class="btn btn-danger btn-sm btn-delete-link" data-id="${l.id}" style="padding: 2px 4px; font-size:0.7rem;">
-                                    <i data-lucide="trash-2" style="width:10px;height:10px;"></i>
-                                </button>
-                            ` : ''}
                         </div>
                     `;
                 });
             }
 
             portalHTML += `
-                <div class="cms-editable-section card" ${displayStyle}>
-                    ${renderCmsControls('quick_links', 'ลิงก์หน่วยงาน', 'btn-add-link-agency-cms', 'เพิ่มลิงก์')}
+                <div class="card">
                     <div class="card-header" style="margin-bottom:1rem; padding-bottom:0.5rem;">
                         <h2><i data-lucide="globe" style="color:var(--color-info);"></i> ลิงก์หน่วยงาน</h2>
                     </div>
@@ -700,7 +649,6 @@ class SchoolHubApp {
 
         // C. E-Services Section
         if (isVisible('eservices')) {
-            const displayStyle = this.homepageConfigs['eservices'] === false ? 'style="opacity: 0.5;"' : '';
             const eserviceLinks = links.filter(l => l.type === 'eservice');
             let eservicesHTML = '';
             if (eserviceLinks.length === 0) {
@@ -709,23 +657,17 @@ class SchoolHubApp {
                 eserviceLinks.forEach(l => {
                     eservicesHTML += `
                         <div class="executive-sidebar-card" style="padding:0.6rem; align-items:center; gap:0.5rem;">
-                            <a href="${l.url}" target="_blank" class="link-sidebar-label" style="flex:1;">
+                            <a href="${l.url}" target="_blank" class="link-sidebar-label" style="flex:1; text-decoration:none;">
                                 <i data-lucide="${l.icon || 'link'}" style="width:16px;height:16px;color:var(--color-warning);flex-shrink:0;"></i>
                                 <span>${l.name}</span>
                             </a>
-                            ${this.cmsEditMode ? `
-                                <button class="btn btn-danger btn-sm btn-delete-link" data-id="${l.id}" style="padding: 2px 4px; font-size:0.7rem;">
-                                    <i data-lucide="trash-2" style="width:10px;height:10px;"></i>
-                                </button>
-                            ` : ''}
                         </div>
                     `;
                 });
             }
 
             portalHTML += `
-                <div class="cms-editable-section card" ${displayStyle}>
-                    ${renderCmsControls('eservices', 'บริการ E-Services', 'btn-add-link-eservice-cms', 'เพิ่มลิงก์')}
+                <div class="card">
                     <div class="card-header" style="margin-bottom:1rem; padding-bottom:0.5rem;">
                         <h2><i data-lucide="cpu" style="color:var(--color-warning);"></i> บริการ E-Services</h2>
                     </div>
@@ -741,10 +683,6 @@ class SchoolHubApp {
 
         this.viewport.innerHTML = portalHTML;
         this.initBannerSlider(banners.length);
-
-        if (this.cmsEditMode) {
-            this.bindCmsEditModeActions();
-        }
     }
 
     initBannerSlider(slideCount) {
@@ -2903,6 +2841,492 @@ class SchoolHubApp {
             await this.renderTopNav();
             this.renderBackendNavigation();
         };
+    }
+
+    // =========================================================================
+    // 16. BACKEND HOMEPAGE CMS MANAGER
+    // =========================================================================
+    async renderBackendHomepage() {
+        const banners = await window.dbService.getBanners();
+        const news = await window.dbService.getNewsActivities();
+        const newsletters = await window.dbService.getPrNewsletters();
+        const executives = await window.dbService.getExecutives();
+        const links = await window.dbService.getQuickLinks();
+        const configs = await window.dbService.getHomepageConfigs();
+
+        const configChecked = (key) => configs[key] !== false ? 'checked' : '';
+
+        this.viewport.innerHTML = `
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>จัดการเนื้อหาหน้าแรกเว็บไซต์ (Homepage CMS)</h1>
+                    <p>ปรับเปลี่ยนลำดับ แสดง/ซ่อนบล็อก หรือจัดการข้อมูลสไลด์ ข่าวประชาสัมพันธ์ ทำเนียบผู้บริหาร และลิงก์เชื่อมโยงทางด่วนของโรงเรียน</p>
+                </div>
+            </div>
+
+            <div class="homepage-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <!-- Column 1: Configs & Banners -->
+                <div style="display:flex; flex-direction:column; gap:2rem;">
+                    <!-- Visibility Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i data-lucide="eye" style="color:var(--color-primary)"></i> เปิด/ปิด แสดงผลเมนูหน้าหลัก</h2>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>แบนเนอร์ภาพสไลด์บอร์ด</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('banner')} class="cms-config-toggle-backend" data-section="banner">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>ข่าวสารและกิจกรรม</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('news_activities')} class="cms-config-toggle-backend" data-section="news_activities">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>จดหมายข่าวประชาสัมพันธ์</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('pr_newsletters')} class="cms-config-toggle-backend" data-section="pr_newsletters">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>กล่อง Facebook โรงเรียน</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('facebook_embed')} class="cms-config-toggle-backend" data-section="facebook_embed">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>ทำเนียบผู้บริหารโรงเรียน</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('executives')} class="cms-config-toggle-backend" data-section="executives">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                <span>แถบลิงก์หน่วยงานภายนอก/ภายใน</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('quick_links')} class="cms-config-toggle-backend" data-section="quick_links">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:0.5rem;">
+                                <span>ระบบแถบ E-Services</span>
+                                <label class="switch-control">
+                                    <input type="checkbox" ${configChecked('eservices')} class="cms-config-toggle-backend" data-section="eservices">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Banners Table -->
+                    <div class="card">
+                        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h2><i data-lucide="image" style="color:var(--color-primary)"></i> รูปภาพสไลด์แบนเนอร์</h2>
+                            <button class="btn btn-primary btn-sm" id="btn-backend-add-banner">เพิ่มรูปสไลด์</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>ภาพพรีวิว</th>
+                                        <th>ชื่อแบนเนอร์</th>
+                                        <th style="text-align:right;">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${banners.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลสไลด์แบนเนอร์</td></tr>' : banners.map(b => `
+                                        <tr>
+                                            <td><img src="${b.image_url}" style="width:70px; height:40px; border-radius:var(--radius-sm); object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=120&q=80'"></td>
+                                            <td style="font-weight:600;">${b.title}</td>
+                                            <td style="text-align:right;">
+                                                <button class="btn btn-secondary btn-danger btn-sm btn-backend-delete-banner" data-id="${b.id}" style="padding:0.25rem 0.5rem;">ลบ</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: News & PR Newsletters -->
+                <div style="display:flex; flex-direction:column; gap:2rem;">
+                    <!-- News Table -->
+                    <div class="card">
+                        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h2><i data-lucide="newspaper" style="color:var(--color-primary)"></i> ข่าวสารและกิจกรรม</h2>
+                            <button class="btn btn-primary btn-sm" id="btn-backend-add-news">เพิ่มข่าวใหม่</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>หัวข้อข่าว</th>
+                                        <th>วันที่ประกาศ</th>
+                                        <th style="text-align:right;">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${news.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลข่าวสาร</td></tr>' : news.map(n => `
+                                        <tr>
+                                            <td style="font-weight:600;">${n.title}</td>
+                                            <td>${n.date}</td>
+                                            <td style="text-align:right;">
+                                                <button class="btn btn-secondary btn-danger btn-sm btn-backend-delete-news" data-id="${n.id}" style="padding:0.25rem 0.5rem;">ลบ</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PR Newsletters Table -->
+                    <div class="card">
+                        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h2><i data-lucide="megaphone" style="color:var(--color-success)"></i> จดหมายข่าวประชาสัมพันธ์</h2>
+                            <button class="btn btn-primary btn-sm" id="btn-backend-add-newsletter">เพิ่มจดหมายข่าว</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>หัวข้อ</th>
+                                        <th>วันที่ประชาสัมพันธ์</th>
+                                        <th style="text-align:right;">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${newsletters.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">ไม่มีจดหมายข่าว</td></tr>' : newsletters.map(l => `
+                                        <tr>
+                                            <td style="font-weight:600;">${l.title}</td>
+                                            <td>${l.date}</td>
+                                            <td style="text-align:right;">
+                                                <button class="btn btn-secondary btn-danger btn-sm btn-backend-delete-newsletter" data-id="${l.id}" style="padding:0.25rem 0.5rem;">ลบ</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Executives & Links -->
+            <div class="homepage-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                <!-- Executives List -->
+                <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h2><i data-lucide="user-check" style="color:var(--color-primary)"></i> ทำเนียบคณะผู้บริหาร</h2>
+                        <button class="btn btn-primary btn-sm" id="btn-backend-add-executive">เพิ่มผู้บริหาร</button>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" style="font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>รูปถ่าย</th>
+                                    <th>ชื่อ - สกุล</th>
+                                    <th>ตำแหน่ง</th>
+                                    <th>ลำดับ</th>
+                                    <th style="text-align:right;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${executives.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลคณะผู้บริหาร</td></tr>' : executives.sort((a,b)=>a.display_order-b.display_order).map(ex => `
+                                    <tr>
+                                        <td><img src="${ex.image_url}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=80&q=80'"></td>
+                                        <td style="font-weight:600;">${ex.name}</td>
+                                        <td>${ex.position}</td>
+                                        <td>${ex.display_order}</td>
+                                        <td style="text-align:right;">
+                                            <button class="btn btn-secondary btn-danger btn-sm btn-backend-delete-executive" data-id="${ex.id}" style="padding:0.25rem 0.5rem;">ลบ</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Links Manager -->
+                <div class="card">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h2><i data-lucide="link" style="color:var(--color-info)"></i> ลิงก์ด่วนหน่วยงาน & บริการ E-Services</h2>
+                        <button class="btn btn-primary btn-sm" id="btn-backend-add-link">เพิ่มลิงก์หน่วยงาน/บริการ</button>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" style="font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อเว็บไซต์/บริการ</th>
+                                    <th>ประเภท</th>
+                                    <th>ลำดับ</th>
+                                    <th style="text-align:right;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${links.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลลิงก์อ้างอิง</td></tr>' : links.sort((a,b)=>a.display_order-b.display_order).map(l => `
+                                    <tr>
+                                        <td style="font-weight:600;"><a href="${l.url}" target="_blank" style="color:var(--color-primary); text-decoration:none;">${l.name}</a></td>
+                                        <td><span class="badge ${l.type === 'agency' ? 'badge-success' : 'badge-warning'}">${l.type === 'agency' ? 'หน่วยงาน' : 'E-Service'}</span></td>
+                                        <td>${l.display_order}</td>
+                                        <td style="text-align:right;">
+                                            <button class="btn btn-secondary btn-danger btn-sm btn-backend-delete-link" data-id="${l.id}" style="padding:0.25rem 0.5rem;">ลบ</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        lucide.createIcons();
+
+        // 1. Bind Config Visibility Toggles
+        document.querySelectorAll('.cms-config-toggle-backend').forEach(toggle => {
+            toggle.addEventListener('change', async (e) => {
+                const section = e.target.getAttribute('data-section');
+                const visible = e.target.checked;
+                await window.dbService.updateHomepageConfigVisibility(section, visible);
+            });
+        });
+
+        // 2. Bind Banners Actions
+        document.getElementById('btn-backend-add-banner').addEventListener('click', () => {
+            this.modalTitle.textContent = "เพิ่มภาพสไลด์แบนเนอร์ประชาสัมพันธ์ใหม่";
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>หัวข้อประชาสัมพันธ์แบนเนอร์</label>
+                    <input type="text" class="form-control" name="title" required placeholder="เช่น ต้อนรับวันเปิดภาคเรียนปีการศึกษา 2569">
+                </div>
+                <div class="form-group">
+                    <label>ที่อยู่อ้างอิงรูปภาพ (Image URL)</label>
+                    <input type="url" class="form-control" name="image_url" required placeholder="https://images.unsplash.com/...">
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์ปลายทางเมื่อคลิก (Link URL)</label>
+                    <input type="text" class="form-control" name="link_url" value="#" placeholder="เช่น # หรือลิงก์ภายนอก">
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addBanner({
+                    title: formData.get('title'),
+                    image_url: formData.get('image_url'),
+                    link_url: formData.get('link_url')
+                });
+                this.closeModal();
+                this.renderBackendHomepage();
+            };
+        });
+
+        document.querySelectorAll('.btn-backend-delete-banner').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ต้องการลบรูปภาพประชาสัมพันธ์แบนเนอร์นี้ออกหรือไม่?")) {
+                    await window.dbService.deleteBanner(btn.getAttribute('data-id'));
+                    this.renderBackendHomepage();
+                }
+            });
+        });
+
+        // 3. Bind News Actions
+        document.getElementById('btn-backend-add-news').addEventListener('click', () => {
+            this.modalTitle.textContent = "เพิ่มประกาศข่าวสารกิจกรรมโรงเรียน";
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>หัวข้อประกาศข่าวสาร</label>
+                    <input type="text" class="form-control" name="title" required placeholder="เช่น พิธีมอบเกียรติบัตรนักเรียนดีเด่น">
+                </div>
+                <div class="form-group">
+                    <label>เนื้อหาโดยย่อ</label>
+                    <textarea class="form-control" name="content" rows="4" required placeholder="กรอกเนื้อหาข่าวสารประชาสัมพันธ์ย่อ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>รูปภาพแนบข่าวสาร (Image URL)</label>
+                    <input type="url" class="form-control" name="image_url" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>วันที่ลงข่าวสาร</label>
+                    <input type="date" class="form-control" name="date" value="${new Date().toISOString().substring(0, 10)}" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addNewsActivity({
+                    title: formData.get('title'),
+                    content: formData.get('content'),
+                    image_url: formData.get('image_url') || null,
+                    date: formData.get('date')
+                });
+                this.closeModal();
+                this.renderBackendHomepage();
+            };
+        });
+
+        document.querySelectorAll('.btn-backend-delete-news').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ยืนยันที่จะลบประกาศข่าวกิจกรรมนี้ออกถาวร?")) {
+                    await window.dbService.deleteNewsActivity(btn.getAttribute('data-id'));
+                    this.renderBackendHomepage();
+                }
+            });
+        });
+
+        // 4. Bind Newsletter Actions
+        document.getElementById('btn-backend-add-newsletter').addEventListener('click', () => {
+            this.modalTitle.textContent = "เพิ่มเอกสารจดหมายข่าวประชาสัมพันธ์";
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>ชื่อจดหมายข่าวประชาสัมพันธ์</label>
+                    <input type="text" class="form-control" name="title" required placeholder="เช่น จดหมายข่าวฉบับที่ 03/2569">
+                </div>
+                <div class="form-group">
+                    <label>รูปภาพปกย่อของจดหมาย (Image URL)</label>
+                    <input type="url" class="form-control" name="image_url" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์ดาวน์โหลดเอกสาร (File URL)</label>
+                    <input type="text" class="form-control" name="file_url" value="#" placeholder="เช่น ลิงก์ PDF แฟลชไดร์ฟ หรือ #">
+                </div>
+                <div class="form-group">
+                    <label>วันที่จัดทำเอกสาร</label>
+                    <input type="date" class="form-control" name="date" value="${new Date().toISOString().substring(0, 10)}" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addPrNewsletter({
+                    title: formData.get('title'),
+                    image_url: formData.get('image_url'),
+                    file_url: formData.get('file_url'),
+                    date: formData.get('date')
+                });
+                this.closeModal();
+                this.renderBackendHomepage();
+            };
+        });
+
+        document.querySelectorAll('.btn-backend-delete-newsletter').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ยืนยันการลบเอกสารจดหมายข่าวประชาสัมพันธ์นี้ออกหรือไม่?")) {
+                    await window.dbService.deletePrNewsletter(btn.getAttribute('data-id'));
+                    this.renderBackendHomepage();
+                }
+            });
+        });
+
+        // 5. Bind Executive Actions
+        document.getElementById('btn-backend-add-executive').addEventListener('click', () => {
+            this.modalTitle.textContent = "เพิ่มคณะผู้บริหารโรงเรียน";
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>ชื่อ - นามสกุล</label>
+                    <input type="text" class="form-control" name="name" required placeholder="เช่น ดร.วิทยา สอนเก่ง">
+                </div>
+                <div class="form-group">
+                    <label>ตำแหน่งวิชาการ/การบริหาร</label>
+                    <input type="text" class="form-control" name="position" required placeholder="เช่น ผู้อำนวยการโรงเรียน">
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์รูปถ่ายผู้บริหาร (Image URL)</label>
+                    <input type="url" class="form-control" name="image_url" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>ลำดับแสดงผลจากซ้ายไปขวา (Display Order)</label>
+                    <input type="number" class="form-control" name="display_order" value="1" min="1" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addExecutive({
+                    name: formData.get('name'),
+                    position: formData.get('position'),
+                    image_url: formData.get('image_url'),
+                    display_order: parseInt(formData.get('display_order')) || 1
+                });
+                this.closeModal();
+                this.renderBackendHomepage();
+            };
+        });
+
+        document.querySelectorAll('.btn-backend-delete-executive').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ยืนยันที่จะลบข้อมูลผู้บริหารคนนี้ออกหรือไม่?")) {
+                    await window.dbService.deleteExecutive(btn.getAttribute('data-id'));
+                    this.renderBackendHomepage();
+                }
+            });
+        });
+
+        // 6. Bind Links Actions
+        document.getElementById('btn-backend-add-link').addEventListener('click', () => {
+            this.modalTitle.textContent = "เพิ่มลิงก์ด่วนหรือบริการ E-Services";
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>ชื่อเว็บ/บริการปลายทาง</label>
+                    <input type="text" class="form-control" name="name" required placeholder="เช่น ระบบ SGS เช็คเกรดครู">
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์เปิดหน้าเว็บ (URL)</label>
+                    <input type="text" class="form-control" name="url" required placeholder="เช่น https://google.com หรือ #backend/attendance">
+                </div>
+                <div class="form-group">
+                    <label>สัญลักษณ์ไอคอน (Lucide Icon)</label>
+                    <input type="text" class="form-control" name="icon" value="link" required placeholder="เช่น globe, mail, wallet, link">
+                </div>
+                <div class="form-group">
+                    <label>ประเภทของลิงก์</label>
+                    <select class="form-control" name="type">
+                        <option value="agency">ลิงก์หน่วยงาน (หน้าเว็บโรงเรียน/สังกัด)</option>
+                        <option value="eservice">บริการ E-Services สำหรับบุคลากร</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ลำดับจัดเรียง (Display Order)</label>
+                    <input type="number" class="form-control" name="display_order" value="1" min="1" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addQuickLink({
+                    name: formData.get('name'),
+                    url: formData.get('url'),
+                    icon: formData.get('icon'),
+                    type: formData.get('type'),
+                    display_order: parseInt(formData.get('display_order')) || 1
+                });
+                this.closeModal();
+                this.renderBackendHomepage();
+            };
+        });
+
+        document.querySelectorAll('.btn-backend-delete-link').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ต้องการลบลิงก์เชื่อมโยงทางด่วนนี้ออกจากหน้าหลัก?")) {
+                    await window.dbService.deleteQuickLink(btn.getAttribute('data-id'));
+                    this.renderBackendHomepage();
+                }
+            });
+        });
     }
 
     // ==========================================
