@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โรงเรียนมหาชัยพิทยาคาร - Mahachai Pittayakarn School</title>
+    <meta name="description" content="เว็บไซต์อย่างเป็นทางการของโรงเรียนมหาชัยพิทยาคาร ข้อมูลข่าวสาร ประกาศ จดหมายข่าวประชาสัมพันธ์ ทำเนียบผู้บริหาร และระบบ e-Services">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Supabase JS Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="container header-container">
+            <img src="images/school_logo.png" alt="โลโก้โรงเรียนมหาชัยพิทยาคาร" class="school-logo">
+            <div class="school-title">
+                <h1>โรงเรียนมหาชัยพิทยาคาร</h1>
+                <p>Mahachai Pittayakarn School</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <div class="navbar-wrapper">
+        <div class="container navbar">
+            <button class="hamburger" id="hamburger-menu" aria-label="เมนู">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="nav-menu" id="navbar-menu">
+                <!-- เมนูนำทางจะถูกเรนเดอร์แบบ Dynamic ด้วย JavaScript (app.js) -->
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link"><i class="fa-solid fa-house"></i> หน้าแรก</a>
+                </li>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Body Container -->
+    <main class="container">
+        <div class="main-layout">
+            
+            <!-- Center Column (70%) -->
+            <div class="center-content">
+                
+                <!-- Slideshow Banner -->
+                <div class="slider-container" id="main-slider">
+                    <!-- สไลด์จะถูกดึงจาก Supabase และใส่ที่นี่ -->
+                    <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200')">
+                        <div class="slide-overlay">
+                            <h2 class="slide-title">ยินดีต้อนรับสู่โรงเรียนมหาชัยพิทยาคาร</h2>
+                            <p>มุ่งมั่นพัฒนาวิชาการ คุณธรรมนำความรู้ สู่มาตรฐานสากล</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Slider Navigation -->
+                    <button class="slider-btn prev" id="slider-prev">&lt;</button>
+                    <button class="slider-btn next" id="slider-next">&gt;</button>
+                    
+                    <div class="slider-dots" id="slider-dots-container">
+                        <span class="slider-dot active" data-index="0"></span>
+                    </div>
+                </div>
+
+                <!-- Festival Banner วันสำคัญ -->
+                <div class="festival-banner-container" id="festival-banner-area" style="display: none;">
+                    <!-- ป้ายประกาศวันสำคัญแบบ Dynamic -->
+                </div>
+
+                <!-- ประกาศโรงเรียน (ข่าวสารล่าสุด) -->
+                <section class="card" id="news-section">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-bullhorn"></i> ข่าวสารและประกาศโรงเรียน
+                        </h2>
+                    </div>
+                    <div class="news-grid" id="news-list-container">
+                        <!-- รายการข่าวจะโหลดเข้ามาแบบ Dynamic -->
+                        <div style="text-align: center; width: 100%; padding: 20px; color: var(--text-muted);">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top: 10px;">กำลังโหลดข่าวสาร...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- จดหมายข่าวประชาสัมพันธ์ (พร้อมระบบกรองปีการศึกษา) -->
+                <section class="card" id="newsletter-section">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-newspaper"></i> จดหมายข่าวประชาสัมพันธ์
+                        </h2>
+                    </div>
+                    
+                    <!-- กรองปีการศึกษา (Filter) -->
+                    <div class="filter-bar" id="academic-year-filters">
+                        <button class="filter-btn active" data-year="all">ทั้งหมด</button>
+                        <!-- ปีการศึกษาต่างๆ จะดึงมาแสดงอัตโนมัติ -->
+                    </div>
+
+                    <div class="newsletter-grid" id="newsletter-list-container">
+                        <!-- จดหมายข่าวจะแสดงที่นี่ -->
+                        <div style="text-align: center; width: 100%; padding: 20px; color: var(--text-muted);">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top: 10px;">กำลังโหลดจดหมายข่าว...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Facebook Embed Plugin -->
+                <section class="card" id="facebook-section">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-brands fa-facebook"></i> ติดตามเราทาง Facebook
+                        </h2>
+                    </div>
+                    <div class="fb-embed-container" id="fb-iframe-container">
+                        <!-- โค้ด Facebook Embed จะมาแสดงที่นี่ จากค่าที่เซ็ตใน settings -->
+                        <iframe src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Ffacebook&tabs=timeline&width=500&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true" 
+                                width="500" height="500" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Right Sidebar (30%) -->
+            <aside class="sidebar">
+                
+                <!-- ทำเนียบผู้บริหาร -->
+                <section class="card exec-container" id="executives-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-user-tie"></i> ทำเนียบผู้บริหาร
+                        </h2>
+                    </div>
+                    <div id="executives-list-container">
+                        <!-- โหลดข้อมูลผู้บริหารแบบ Dynamic -->
+                        <div class="exec-card">
+                            <div class="exec-image"></div>
+                            <div class="exec-name">ผู้บริหารโรงเรียน</div>
+                            <div class="exec-position">กำลังโหลดข้อมูล...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ลิงก์หน่วยงาน (Banner Links) -->
+                <section class="card" id="agency-links-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-link"></i> ลิงก์หน่วยงาน
+                        </h2>
+                    </div>
+                    <div class="agency-links-container" id="agency-links-container">
+                        <!-- แบนเนอร์ลิงก์หน่วยงานภายนอกแบบ Dynamic -->
+                        <div style="text-align: center; color: var(--text-muted); padding: 10px;">
+                            กำลังโหลด...
+                        </div>
+                    </div>
+                </section>
+
+                <!-- บริการ e-Service -->
+                <section class="card" id="eservice-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-laptop-code"></i> บริการ e-Service
+                        </h2>
+                    </div>
+                    <div class="eservice-container" id="eservice-links-container">
+                        <!-- ลิงก์บริการระบบออนไลน์แบบ Dynamic -->
+                        <div style="text-align: center; grid-column: span 2; color: var(--text-muted); padding: 10px;">
+                            กำลังโหลด...
+                        </div>
+                    </div>
+                </section>
+
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-grid">
+            <div class="footer-info">
+                <h3>โรงเรียนมหาชัยพิทยาคาร</h3>
+                <p><i class="fa-solid fa-location-dot"></i> ที่อยู่: ถนนเลี่ยงเมืองมหาชัย ตำบลมหาชัย อำเภอเมือง จังหวัดสมุทรสาคร 74000</p>
+                <p><i class="fa-solid fa-phone"></i> โทรศัพท์: 034-123456</p>
+                <p><i class="fa-solid fa-envelope"></i> อีเมล: contact@mahachai.ac.th</p>
+            </div>
+            <div class="footer-links">
+                <h4>ลิงก์ด่วน</h4>
+                <ul>
+                    <li><a href="index.html">หน้าแรก</a></li>
+                    <li><a href="admin.html"><i class="fa-solid fa-lock"></i> ระบบหลังบ้าน (CMS)</a></li>
+                </ul>
+            </div>
+            <div class="footer-links">
+                <h4>หน่วยงานต้นสังกัด</h4>
+                <ul>
+                    <li><a href="https://www.obec.go.th" target="_blank">สพฐ.</a></li>
+                    <li><a href="https://www.moe.go.th" target="_blank">กระทรวงศึกษาธิการ</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 โรงเรียนมหาชัยพิทยาคาร. All Rights Reserved. Designed for Educational CMS.</p>
+        </div>
+    </footer>
+
+    <!-- App Configuration & Logics -->
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

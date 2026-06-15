@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าเพจเนื้อหา - โรงเรียนมหาชัยพิทยาคาร</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Supabase JS Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="container header-container">
+            <img src="images/school_logo.png" alt="โลโก้โรงเรียนมหาชัยพิทยาคาร" class="school-logo">
+            <div class="school-title">
+                <h1>โรงเรียนมหาชัยพิทยาคาร</h1>
+                <p>Mahachai Pittayakarn School</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <div class="navbar-wrapper">
+        <div class="container navbar">
+            <button class="hamburger" id="hamburger-menu" aria-label="เมนู">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="nav-menu" id="navbar-menu">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link"><i class="fa-solid fa-house"></i> หน้าแรก</a>
+                </li>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Body Container -->
+    <main class="container">
+        <div class="main-layout">
+            
+            <!-- Center Column (70%) -->
+            <div class="center-content">
+                <div class="news-detail-container" id="detail-loading-box">
+                    <div style="text-align: center; padding: 50px 0; color: var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                        <p style="margin-top: 15px;">กำลังโหลดเนื้อหาหน้าเว็บ...</p>
+                    </div>
+                </div>
+
+                <div class="news-detail-container" id="page-content-area" style="display: none;">
+                    <h1 class="news-detail-title" id="page-title">หัวข้อหน้าเพจ</h1>
+                    <div class="news-detail-content" id="page-body">
+                        <!-- เนื้อหาที่ดึงมาจากฐานข้อมูล -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar (30%) - Same sidebar layout -->
+            <aside class="sidebar">
+                
+                <!-- ทำเนียบผู้บริหาร -->
+                <section class="card exec-container" id="executives-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-user-tie"></i> ทำเนียบผู้บริหาร
+                        </h2>
+                    </div>
+                    <div id="executives-list-container">
+                        <div class="exec-card">
+                            <div class="exec-image"></div>
+                            <div class="exec-name">ผู้บริหารโรงเรียน</div>
+                            <div class="exec-position">กำลังโหลดข้อมูล...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ลิงก์หน่วยงาน (Banner Links) -->
+                <section class="card" id="agency-links-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-link"></i> ลิงก์หน่วยงาน
+                        </h2>
+                    </div>
+                    <div class="agency-links-container" id="agency-links-container">
+                        <div style="text-align: center; color: var(--text-muted); padding: 10px;">กำลังโหลด...</div>
+                    </div>
+                </section>
+
+                <!-- บริการ e-Service -->
+                <section class="card" id="eservice-sidebar">
+                    <div class="card-title-container">
+                        <h2 class="card-title">
+                            <i class="fa-solid fa-laptop-code"></i> บริการ e-Service
+                        </h2>
+                    </div>
+                    <div class="eservice-container" id="eservice-links-container">
+                        <div style="text-align: center; grid-column: span 2; color: var(--text-muted); padding: 10px;">กำลังโหลด...</div>
+                    </div>
+                </section>
+
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-grid">
+            <div class="footer-info">
+                <h3>โรงเรียนมหาชัยพิทยาคาร</h3>
+                <p><i class="fa-solid fa-location-dot"></i> ที่อยู่: ถนนเลี่ยงเมืองมหาชัย ตำบลมหาชัย อำเภอเมือง จังหวัดสมุทรสาคร 74000</p>
+                <p><i class="fa-solid fa-phone"></i> โทรศัพท์: 034-123456</p>
+                <p><i class="fa-solid fa-envelope"></i> อีเมล: contact@mahachai.ac.th</p>
+            </div>
+            <div class="footer-links">
+                <h4>ลิงก์ด่วน</h4>
+                <ul>
+                    <li><a href="index.html">หน้าแรก</a></li>
+                    <li><a href="admin.html"><i class="fa-solid fa-lock"></i> ระบบหลังบ้าน (CMS)</a></li>
+                </ul>
+            </div>
+            <div class="footer-links">
+                <h4>หน่วยงานต้นสังกัด</h4>
+                <ul>
+                    <li><a href="https://www.obec.go.th" target="_blank">สพฐ.</a></li>
+                    <li><a href="https://www.moe.go.th" target="_blank">กระทรวงศึกษาธิการ</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 โรงเรียนมหาชัยพิทยาคาร. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- App Configuration & Logics -->
+    <script src="js/config.js"></script>
+    <script src="js/detail.js"></script>
+</body>
+</html>
