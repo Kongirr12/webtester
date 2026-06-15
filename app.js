@@ -89,21 +89,31 @@ class SchoolHubApp {
         }
         
         // Theme toggle
-        this.themeToggle.addEventListener('click', () => this.toggleTheme());
+        if (this.themeToggle) {
+            this.themeToggle.addEventListener('click', () => this.toggleTheme());
+        }
         
         // Modal cancel/close
-        this.modalClose.addEventListener('click', () => this.closeModal());
-        this.modalBtnCancel.addEventListener('click', () => this.closeModal());
+        if (this.modalClose) {
+            this.modalClose.addEventListener('click', () => this.closeModal());
+        }
+        if (this.modalBtnCancel) {
+            this.modalBtnCancel.addEventListener('click', () => this.closeModal());
+        }
         
         // Global search input keyup
-        this.globalSearch.addEventListener('input', (e) => {
-            this.handleGlobalSearch(e.target.value.trim().toLowerCase());
-        });
+        if (this.globalSearch) {
+            this.globalSearch.addEventListener('input', (e) => {
+                this.handleGlobalSearch(e.target.value.trim().toLowerCase());
+            });
+        }
 
         // CMS Toggle Button
-        this.cmsToggleBtn.addEventListener('click', () => {
-            this.toggleCmsEditMode();
-        });
+        if (this.cmsToggleBtn) {
+            this.cmsToggleBtn.addEventListener('click', () => {
+                this.toggleCmsEditMode();
+            });
+        }
 
         // Logout Button
         const btnLogout = document.getElementById('btn-logout');
@@ -411,14 +421,7 @@ class SchoolHubApp {
         this.homepageConfigs = await window.dbService.getHomepageConfigs();
         const isVisible = (key) => this.homepageConfigs[key] !== false;
 
-        let portalHTML = `
-            <div class="page-header">
-                <div class="page-title">
-                    <h1>ประชาสัมพันธ์โรงเรียน</h1>
-                    <p>ยินดีต้อนรับสู่หน้าพอร์ทัลหลักอย่างเป็นทางการ</p>
-                </div>
-            </div>
-        `;
+        let portalHTML = '';
 
         // 1. Banner Carousel Section
         if (isVisible('banner')) {
@@ -470,7 +473,7 @@ class SchoolHubApp {
         if (isVisible('news_activities')) {
             let newsCardsHTML = '';
             if (news.length === 0) {
-                newsCardsHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 2rem; color:var(--text-muted);">ไม่มีข้อมูลข่าวกิจกรรม</div>`;
+                newsCardsHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 2rem; color:var(--text-muted);">ไม่มีประกาศโรงเรียน</div>`;
             } else {
                 news.forEach(n => {
                     newsCardsHTML += `
@@ -493,7 +496,7 @@ class SchoolHubApp {
             portalHTML += `
                 <div class="card">
                     <div class="card-header" style="margin-bottom:0.5rem;">
-                        <h2><i data-lucide="newspaper" style="color:var(--color-primary);"></i> ข่าวสารและกิจกรรมโรงเรียน</h2>
+                        <h2><i data-lucide="bell" style="color:var(--color-primary);"></i> ประกาศโรงเรียน</h2>
                     </div>
                     <div class="news-bulletin-grid">
                         ${newsCardsHTML}
@@ -542,7 +545,7 @@ class SchoolHubApp {
                     <div class="fb-header">
                         <div class="fb-header-left">
                             <div class="fb-logo-mock">f</div>
-                            <div class="fb-title-mock">โรงเรียนพัฒนาการศึกษาขั้นพื้นฐาน (Facebook)</div>
+                            <div class="fb-title-mock">เฟสบุ๊คโรงเรียน</div>
                         </div>
                         <button class="fb-btn-like" onclick="window.open('https://facebook.com', '_blank')">
                             <i data-lucide="thumbs-up" style="width:14px;height:14px;"></i> ติดตามเพจ
@@ -669,7 +672,7 @@ class SchoolHubApp {
             portalHTML += `
                 <div class="card">
                     <div class="card-header" style="margin-bottom:1rem; padding-bottom:0.5rem;">
-                        <h2><i data-lucide="cpu" style="color:var(--color-warning);"></i> บริการ E-Services</h2>
+                        <h2><i data-lucide="cpu" style="color:var(--color-warning);"></i> บริการ eservice</h2>
                     </div>
                     <div class="links-sidebar-list">
                         ${eservicesHTML}
@@ -2881,7 +2884,7 @@ class SchoolHubApp {
                                 </label>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
-                                <span>ข่าวสารและกิจกรรม</span>
+                                <span>ประกาศโรงเรียน (ข่าวสาร)</span>
                                 <label class="switch-control">
                                     <input type="checkbox" ${configChecked('news_activities')} class="cms-config-toggle-backend" data-section="news_activities">
                                     <span class="switch-slider"></span>
@@ -2895,28 +2898,28 @@ class SchoolHubApp {
                                 </label>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
-                                <span>กล่อง Facebook โรงเรียน</span>
+                                <span>เฟสบุ๊คโรงเรียน</span>
                                 <label class="switch-control">
                                     <input type="checkbox" ${configChecked('facebook_embed')} class="cms-config-toggle-backend" data-section="facebook_embed">
                                     <span class="switch-slider"></span>
                                 </label>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
-                                <span>ทำเนียบผู้บริหารโรงเรียน</span>
+                                <span>ผู้บริหารโรงเรียน</span>
                                 <label class="switch-control">
                                     <input type="checkbox" ${configChecked('executives')} class="cms-config-toggle-backend" data-section="executives">
                                     <span class="switch-slider"></span>
                                 </label>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
-                                <span>แถบลิงก์หน่วยงานภายนอก/ภายใน</span>
+                                <span>ลิงก์หน่วยงาน</span>
                                 <label class="switch-control">
                                     <input type="checkbox" ${configChecked('quick_links')} class="cms-config-toggle-backend" data-section="quick_links">
                                     <span class="switch-slider"></span>
                                 </label>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:0.5rem;">
-                                <span>ระบบแถบ E-Services</span>
+                                <span>บริการ eservice</span>
                                 <label class="switch-control">
                                     <input type="checkbox" ${configChecked('eservices')} class="cms-config-toggle-backend" data-section="eservices">
                                     <span class="switch-slider"></span>
@@ -2961,20 +2964,20 @@ class SchoolHubApp {
                     <!-- News Table -->
                     <div class="card">
                         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                            <h2><i data-lucide="newspaper" style="color:var(--color-primary)"></i> ข่าวสารและกิจกรรม</h2>
-                            <button class="btn btn-primary btn-sm" id="btn-backend-add-news">เพิ่มข่าวใหม่</button>
+                            <h2><i data-lucide="bell" style="color:var(--color-primary)"></i> ประกาศโรงเรียน</h2>
+                            <button class="btn btn-primary btn-sm" id="btn-backend-add-news">เพิ่มประกาศใหม่</button>
                         </div>
                         <div style="overflow-x:auto;">
                             <table class="data-table" style="font-size:0.85rem;">
                                 <thead>
                                     <tr>
-                                        <th>หัวข้อข่าว</th>
+                                        <th>หัวข้อประกาศ</th>
                                         <th>วันที่ประกาศ</th>
                                         <th style="text-align:right;">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${news.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลข่าวสาร</td></tr>' : news.map(n => `
+                                    ${news.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">ไม่มีประกาศโรงเรียน</td></tr>' : news.map(n => `
                                         <tr>
                                             <td style="font-weight:600;">${n.title}</td>
                                             <td>${n.date}</td>
@@ -3025,7 +3028,7 @@ class SchoolHubApp {
                 <!-- Executives List -->
                 <div class="card">
                     <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h2><i data-lucide="user-check" style="color:var(--color-primary)"></i> ทำเนียบคณะผู้บริหาร</h2>
+                        <h2><i data-lucide="user-check" style="color:var(--color-primary)"></i> ผู้บริหารโรงเรียน</h2>
                         <button class="btn btn-primary btn-sm" id="btn-backend-add-executive">เพิ่มผู้บริหาร</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -3059,7 +3062,7 @@ class SchoolHubApp {
                 <!-- Links Manager -->
                 <div class="card">
                     <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h2><i data-lucide="link" style="color:var(--color-info)"></i> ลิงก์ด่วนหน่วยงาน & บริการ E-Services</h2>
+                        <h2><i data-lucide="link" style="color:var(--color-info)"></i> ลิงก์หน่วยงาน & บริการ eservice</h2>
                         <button class="btn btn-primary btn-sm" id="btn-backend-add-link">เพิ่มลิงก์หน่วยงาน/บริการ</button>
                     </div>
                     <div style="overflow-x:auto;">
