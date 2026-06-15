@@ -4,7 +4,7 @@ class SchoolDatabaseService {
     constructor() {
         this.supabase = null;
         this.demoMode = true;
-        this.dbConfig = { url: 'https://unoaadqtwxoolpxhuain.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVub2FhZHF0d3hvb2xweGh1YWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTg1NDUsImV4cCI6MjA5NzA3NDU0NX0.eoZ91qmDoS04-AIR4k9fAaCsErnsSRlqG3ibTXA64Uk' };
+        this.dbConfig = { url: '', anonKey: '' };
     }
 
     // Initialize Connection
@@ -40,7 +40,6 @@ class SchoolDatabaseService {
             this.demoMode = true;
         }
 
-        // Initialize local storage database in any case (for demo mode)
         this.initDemoData();
     }
 
@@ -66,7 +65,7 @@ class SchoolDatabaseService {
 
     // Initialize Mock Data for LocalStorage (Demo Mode)
     initDemoData() {
-        if (!localStorage.getItem('demo_initialized_v2')) {
+        if (!localStorage.getItem('demo_initialized_v4')) {
             // Core Data
             const classes = [
                 { id: 'c1', name: 'ม.1/1', room: 'ห้อง 301' },
@@ -106,7 +105,7 @@ class SchoolDatabaseService {
                 { id: 'g3', student_id: 'st2', subject_id: 's1', semester: '1/2569', midterm_score: 22, final_score: 20, classwork_score: 36, total_score: 78, grade_value: '3.5' }
             ];
 
-            // V2: Homepage Portal CMS Data
+            // Homepage CMS Data
             const homepage_configs = [
                 { section_key: 'banner', is_visible: true },
                 { section_key: 'news_activities', is_visible: true },
@@ -159,6 +158,21 @@ class SchoolDatabaseService {
                 { id: 'm3', title: 'คลิปวิดีโอติวเข้มไวยากรณ์ภาษาอังกฤษเตรียมสอบ O-NET', subject: 'ภาษาอังกฤษ', grade: 'ม.6', link_url: 'https://youtube.com', description: 'วิดีโอทบทวน Active & Passive Voice' }
             ];
 
+            // V4: Pages (บทความ)
+            const pages = [
+                { id: 'p1', title: 'ประวัติความเป็นมาของโรงเรียน', content: '<h2>ประวัติความเป็นมา</h2><p>โรงเรียนของเราก่อตั้งขึ้นเมื่อปี พ.ศ. 2520 เพื่อรองรับนักเรียนในเขตพื้นที่ให้ได้รับการศึกษาระดับขั้นพื้นฐานที่มีประสิทธิภาพ มุ่งเน้นการพัฒนาทั้งด้านปัญญา คุณธรรม และจริยธรรม</p><p>ปัจจุบันมีอาคารเรียน 4 หลัง มีนักเรียนกว่า 500 คน คณะคุณครูที่ทุ่มเทกับการเรียนการสอนพร้อมอุปกรณ์สารสนเทศที่ครบครัน</p>' },
+                { id: 'p2', title: 'วิสัยทัศน์และพันธกิจ', 'content': '<h2>วิสัยทัศน์ (Vision)</h2><p>เป็นสถาบันการศึกษาชั้นนำ มุ่งพัฒนาผู้เรียนให้มีความรู้คู่คุณธรรม นำเทคโนโลยี นวัตกรรมสร้างสรรค์ ดำเนินชีวิตตามปรัชญาเศรษฐกิจพอเพียง สู่สากลภายในปี 2575</p><h2>พันธกิจ (Mission)</h2><ol><li>จัดการเรียนรู้ตามมาตรฐานสากลเพื่อความเป็นเลิศทางวิชาการ</li><li>ส่งเสริมผู้เรียนให้มีคุณธรรมจริยธรรม และสุขภาวะที่ดี</li><li>พัฒนาแหล่งเรียนรู้ทางวิทยาการและเทคโนโลยีที่ทันสมัย</li></ol>' }
+            ];
+
+            // V4: Navigation Menu (เมนูด้านบน)
+            const navigation_menu = [
+                { id: 'm1', title: 'เกี่ยวกับโรงเรียน', link_type: 'external', page_id: null, url: '#', parent_id: null, display_order: 1 },
+                { id: 'm2', title: 'ประวัติโรงเรียน', link_type: 'page', page_id: 'p1', url: null, parent_id: 'm1', display_order: 1 },
+                { id: 'm3', title: 'วิสัยทัศน์', link_type: 'page', page_id: 'p2', url: null, parent_id: 'm1', display_order: 2 },
+                { id: 'm4', title: 'หลักสูตรวิชาการ', link_type: 'external', page_id: null, url: '#', parent_id: null, display_order: 2 },
+                { id: 'm5', title: 'ข้อมูลการเช็คชื่อเข้าเรียน', link_type: 'external', page_id: null, url: '#backend/attendance', parent_id: null, display_order: 3 }
+            ];
+
             localStorage.setItem('demo_classes', JSON.stringify(classes));
             localStorage.setItem('demo_subjects', JSON.stringify(subjects));
             localStorage.setItem('demo_teachers', JSON.stringify(teachers));
@@ -175,8 +189,12 @@ class SchoolDatabaseService {
             localStorage.setItem('demo_quick_links', JSON.stringify(quick_links));
             localStorage.setItem('demo_budget_transactions', JSON.stringify(budget_transactions));
             localStorage.setItem('demo_media_library', JSON.stringify(media_library));
+            
+            // V4 Tables seeding
+            localStorage.setItem('demo_pages', JSON.stringify(pages));
+            localStorage.setItem('demo_navigation_menu', JSON.stringify(navigation_menu));
 
-            localStorage.setItem('demo_initialized_v2', 'true');
+            localStorage.setItem('demo_initialized_v4', 'true');
         }
     }
 
@@ -214,7 +232,7 @@ class SchoolDatabaseService {
     }
 
     // =========================================================================
-    // PART 1: CORE CRUD Fallbacks (Classes, Subjects, Students, Teachers, Attendance, Grades)
+    // PART 1: CORE CRUD Fallbacks
     // =========================================================================
     async getClasses() {
         if (!this.demoMode) {
@@ -553,10 +571,7 @@ class SchoolDatabaseService {
         if (!this.demoMode) {
             const formatted = gradesArray.map(g => {
                 const total = Number(g.midterm_score) + Number(g.final_score) + Number(g.classwork_score);
-                return {
-                    ...g,
-                    grade_value: this.calculateGradeValue(total)
-                };
+                return { ...g, grade_value: this.calculateGradeValue(total) };
             });
             const { data, error } = await this.supabase.from('grades').upsert(formatted, { onConflict: 'student_id,subject_id,semester' }).select();
             if (error) throw error;
@@ -587,17 +602,6 @@ class SchoolDatabaseService {
             this.setLocalData('grades', grades);
             return true;
         }
-    }
-
-    calculateGradeValue(totalScore) {
-        if (totalScore >= 80) return '4';
-        if (totalScore >= 75) return '3.5';
-        if (totalScore >= 70) return '3';
-        if (totalScore >= 65) return '2.5';
-        if (totalScore >= 60) return '2';
-        if (totalScore >= 55) return '1.5';
-        if (totalScore >= 50) return '1';
-        return '0';
     }
 
     async getStudentReportCard(studentId, semester) {
@@ -653,34 +657,26 @@ class SchoolDatabaseService {
     }
 
     // =========================================================================
-    // PART 2: NEW CMS AND SETTINGS Fallbacks (Configs, Banners, News, Executives, Links)
+    // PART 2: CMS MODULES
     // =========================================================================
     async getHomepageConfigs() {
         if (!this.demoMode) {
             const { data, error } = await this.supabase.from('homepage_configs').select('*');
             if (error) throw error;
-            // Return as map { section_key: is_visible }
             const configMap = {};
-            data.forEach(item => {
-                configMap[item.section_key] = item.is_visible;
-            });
+            data.forEach(item => { configMap[item.section_key] = item.is_visible; });
             return configMap;
         } else {
             const configs = this.getLocalData('homepage_configs');
             const configMap = {};
-            configs.forEach(item => {
-                configMap[item.section_key] = item.is_visible;
-            });
+            configs.forEach(item => { configMap[item.section_key] = item.is_visible; });
             return configMap;
         }
     }
 
     async updateHomepageConfigVisibility(sectionKey, isVisible) {
         if (!this.demoMode) {
-            const { data, error } = await this.supabase
-                .from('homepage_configs')
-                .upsert({ section_key: sectionKey, is_visible: isVisible, updated_at: new Date() })
-                .select();
+            const { data, error } = await this.supabase.from('homepage_configs').upsert({ section_key: sectionKey, is_visible: isVisible, updated_at: new Date() }).select();
             if (error) throw error;
             return data[0];
         } else {
@@ -714,7 +710,7 @@ class SchoolDatabaseService {
         } else {
             const banners = this.getLocalData('banners');
             const newBanner = { id: this.generateUUID(), ...bannerData };
-            banners.unshift(newBanner); // Newest first
+            banners.unshift(newBanner);
             this.setLocalData('banners', banners);
             return newBanner;
         }
@@ -978,6 +974,133 @@ class SchoolDatabaseService {
             let items = this.getLocalData('media_library');
             items = items.filter(i => i.id !== itemId);
             this.setLocalData('media_library', items);
+            return true;
+        }
+    }
+
+    // =========================================================================
+    // PART 4: PAGES & NAVIGATION MENUS (V4)
+    // =========================================================================
+    async getPages() {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('pages').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            return data;
+        } else {
+            return this.getLocalData('pages');
+        }
+    }
+
+    async getPageById(id) {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('pages').select('*').eq('id', id).single();
+            if (error) throw error;
+            return data;
+        } else {
+            return this.getLocalData('pages').find(p => p.id === id) || null;
+        }
+    }
+
+    async addPage(pageData) {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('pages').insert([pageData]).select();
+            if (error) throw error;
+            return data[0];
+        } else {
+            const pages = this.getLocalData('pages');
+            const newPage = { id: this.generateUUID(), created_at: new Date().toISOString(), ...pageData };
+            pages.unshift(newPage);
+            this.setLocalData('pages', pages);
+            return newPage;
+        }
+    }
+
+    async updatePage(pageId, pageData) {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('pages').update(pageData).eq('id', pageId).select();
+            if (error) throw error;
+            return data[0];
+        } else {
+            let pages = this.getLocalData('pages');
+            const idx = pages.findIndex(p => p.id === pageId);
+            if (idx !== -1) {
+                pages[idx] = { ...pages[idx], ...pageData };
+                this.setLocalData('pages', pages);
+                return pages[idx];
+            }
+            throw new Error("Page not found");
+        }
+    }
+
+    async deletePage(pageId) {
+        if (!this.demoMode) {
+            const { error } = await this.supabase.from('pages').delete().eq('id', pageId);
+            if (error) throw error;
+            return true;
+        } else {
+            let pages = this.getLocalData('pages');
+            pages = pages.filter(p => p.id !== pageId);
+            this.setLocalData('pages', pages);
+
+            // Also delete navigation links referencing this page
+            let navs = this.getLocalData('navigation_menu');
+            navs = navs.filter(n => n.page_id !== pageId);
+            this.setLocalData('navigation_menu', navs);
+            return true;
+        }
+    }
+
+    async getNavigationMenu() {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('navigation_menu').select('*').order('display_order', { ascending: true });
+            if (error) throw error;
+            return data;
+        } else {
+            return this.getLocalData('navigation_menu').sort((a, b) => a.display_order - b.display_order);
+        }
+    }
+
+    async addNavigationItem(itemData) {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('navigation_menu').insert([itemData]).select();
+            if (error) throw error;
+            return data[0];
+        } else {
+            const navs = this.getLocalData('navigation_menu');
+            const newNav = { id: this.generateUUID(), ...itemData };
+            navs.push(newNav);
+            this.setLocalData('navigation_menu', navs);
+            return newNav;
+        }
+    }
+
+    async updateNavigationItem(itemId, itemData) {
+        if (!this.demoMode) {
+            const { data, error } = await this.supabase.from('navigation_menu').update(itemData).eq('id', itemId).select();
+            if (error) throw error;
+            return data[0];
+        } else {
+            let navs = this.getLocalData('navigation_menu');
+            const idx = navs.findIndex(n => n.id === itemId);
+            if (idx !== -1) {
+                navs[idx] = { ...navs[idx], ...itemData };
+                this.setLocalData('navigation_menu', navs);
+                return navs[idx];
+            }
+            throw new Error("Navigation item not found");
+        }
+    }
+
+    async deleteNavigationItem(itemId) {
+        if (!this.demoMode) {
+            const { error } = await this.supabase.from('navigation_menu').delete().eq('id', itemId);
+            if (error) throw error;
+            return true;
+        } else {
+            let navs = this.getLocalData('navigation_menu');
+            // Delete item and its submenus
+            navs = navs.filter(n => n.id !== itemId && n.parent_id !== itemId);
+            this.setLocalData('navigation_menu', navs);
             return true;
         }
     }
