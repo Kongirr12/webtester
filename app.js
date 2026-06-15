@@ -25,10 +25,8 @@ class SchoolHubApp {
         this.globalSearch = document.getElementById('global-search');
         this.cmsToggleWrapper = document.getElementById('cms-toggle-wrapper');
         this.cmsToggleBtn = document.getElementById('cms-toggle-btn');
-        
-        // Top Nav elements
-        this.topNavBackoffice = document.getElementById('top-nav-backoffice');
-        this.topNavStudentGrades = document.getElementById('top-nav-student-grades');
+        this.btnLoginPublic = document.getElementById('btn-login-public');
+        this.topNavLinks = document.getElementById('top-nav-links');
 
         // Modal elements
         this.modalBackdrop = document.getElementById('modal-backdrop');
@@ -54,10 +52,19 @@ class SchoolHubApp {
         // 3. Initialize theme
         this.initTheme();
         
-        // 4. Initial role sync
-        this.handleRoleChange(this.roleSwitcher.value);
+        // 4. Initial role sync from sessionStorage
+        const savedRole = sessionStorage.getItem('user_role');
+        if (savedRole) {
+            this.handleRoleChange(savedRole);
+            if (this.roleSwitcher) this.roleSwitcher.value = savedRole;
+        } else {
+            this.currentRole = null;
+        }
         
-        // 5. Initial routing
+        // 5. Render top navigation bar
+        await this.renderTopNav();
+        
+        // 6. Initial routing
         this.handleRouting();
     }
 
@@ -75,9 +82,11 @@ class SchoolHubApp {
         });
         
         // Role switcher
-        this.roleSwitcher.addEventListener('change', (e) => {
-            this.handleRoleChange(e.target.value);
-        });
+        if (this.roleSwitcher) {
+            this.roleSwitcher.addEventListener('change', (e) => {
+                this.handleRoleChange(e.target.value);
+            });
+        }
         
         // Theme toggle
         this.themeToggle.addEventListener('click', () => this.toggleTheme());
@@ -95,6 +104,16 @@ class SchoolHubApp {
         this.cmsToggleBtn.addEventListener('click', () => {
             this.toggleCmsEditMode();
         });
+
+        // Logout Button
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', () => {
+                sessionStorage.removeItem('user_role');
+                this.currentRole = null;
+                window.location.hash = 'homepage';
+            });
+        }
     }
 
     // Initialize Theme
@@ -158,30 +177,30 @@ class SchoolHubApp {
         this.renderView(this.currentView);
     }
 
-    // Handle user role swapping
+    // Handle user role swapping (simulator & session sync)
     handleRoleChange(role) {
         this.currentRole = role;
+        sessionStorage.setItem('user_role', role);
         
         if (role === 'Admin') {
             this.activeUser = { name: 'ผู้ดูแลระบบ', role: 'Administrator', avatar: 'AD' };
             this.cmsToggleWrapper.style.display = 'block';
-            this.topNavBackoffice.style.display = 'inline-flex';
-            this.topNavStudentGrades.style.display = 'none'; // Admins/Teachers don't check grades as students
         } else if (role === 'Teacher') {
             this.activeUser = { name: 'ครูสมศักดิ์ รักเรียน', role: 'คุณครูผู้สอน', avatar: 'T' };
             this.cmsToggleWrapper.style.display = 'none';
-            this.topNavBackoffice.style.display = 'inline-flex';
-            this.topNavStudentGrades.style.display = 'none';
         } else if (role === 'Student') {
+            // Simulator only fallback - redirect students back to homepage
             this.activeUser = { name: 'เด็กชายวิชัย ใจกล้า', role: 'นักเรียน / ผู้ปกครอง', avatar: 'S' };
             this.cmsToggleWrapper.style.display = 'none';
-            this.topNavBackoffice.style.display = 'none';
-            this.topNavStudentGrades.style.display = 'inline-flex';
+            sessionStorage.removeItem('user_role');
+            this.currentRole = null;
+            window.location.hash = 'homepage';
+            return;
         }
         
-        this.userDisplayName.textContent = this.activeUser.name;
-        this.userDisplayRole.textContent = this.activeUser.role;
-        this.userAvatar.textContent = this.activeUser.avatar;
+        if (this.userDisplayName) this.userDisplayName.textContent = this.activeUser.name;
+        if (this.userDisplayRole) this.userDisplayRole.textContent = this.activeUser.role;
+        if (this.userAvatar) this.userAvatar.textContent = this.activeUser.avatar;
 
         // Menu visibility based on roles inside Sidebar
         document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
@@ -194,15 +213,16 @@ class SchoolHubApp {
             }
         });
 
-        // If currently viewing a page that is restricted to the new role, redirect
-        const currentMenuItem = document.querySelector(`.sidebar-menu .menu-item[data-target="${this.currentView}"]`);
-        const isRestrictedForRole = currentMenuItem && currentMenuItem.style.display === 'none';
-        const isBackendView = !['homepage', 'medialibrary', 'grades'].includes(this.currentView);
-        
-        if (role === 'Student' && isBackendView) {
-            window.location.hash = 'homepage';
-        } else if (isRestrictedForRole) {
-            window.location.hash = 'homepage';
+        // Validate backend view restrictions for current role
+        const isBackendView = this.currentView.startsWith('backend/');
+        if (isBackendView) {
+            const renderKey = this.currentView.replace('backend/', '');
+            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation'];
+            if (role === 'Teacher' && adminOnlyKeys.includes(renderKey)) {
+                window.location.hash = 'backend/dashboard';
+            } else {
+                this.handleRouting();
+            }
         } else {
             this.handleRouting();
         }
@@ -219,20 +239,70 @@ class SchoolHubApp {
             this.bannerInterval = null;
         }
 
-        // --- NEW SIDEBAR ACCORDING TO USER'S REQUEST ---
-        // Sidebar is VISIBLE ONLY when the role is Admin or Teacher AND they are NOT on the public Homepage
-        const loggedIn = this.currentRole === 'Admin' || this.currentRole === 'Teacher';
-        const isPublicPage = hash === 'homepage'; // Sidebar is hidden on homepage
-        
-        if (loggedIn && !isPublicPage) {
+        const isBackend = hash.startsWith('backend/');
+        const sessionRole = sessionStorage.getItem('user_role');
+
+        if (isBackend) {
+            // AUTH GUARD: Redirect to login if no session exists
+            if (!sessionRole) {
+                window.location.hash = 'login';
+                return;
+            }
+
+            // Verify role access for backend page
+            const renderKey = hash.replace('backend/', '');
+            const adminOnlyKeys = ['teachers', 'classes', 'pages', 'navigation'];
+            if (sessionRole === 'Teacher' && adminOnlyKeys.includes(renderKey)) {
+                window.location.hash = 'backend/dashboard';
+                return;
+            }
+
+            this.currentRole = sessionRole;
+            if (this.roleSwitcher) this.roleSwitcher.value = sessionRole;
+            this.handleRoleChange(sessionRole); // Ensure menu and user details are synced
+
+            // Show backend layout
+            document.body.classList.remove('public-route', 'login-active');
             this.appContainer.classList.remove('sidebar-hidden');
-        } else {
+            if (this.cmsToggleWrapper) this.cmsToggleWrapper.style.display = (sessionRole === 'Admin') ? 'block' : 'none';
+            if (this.btnLoginPublic) this.btnLoginPublic.style.display = 'none';
+
+        } else if (hash === 'login') {
+            // Redirect to backend dashboard if already logged in
+            if (sessionRole) {
+                window.location.hash = 'backend/dashboard';
+                return;
+            }
+
+            // Set login layout
+            document.body.classList.remove('public-route');
+            document.body.classList.add('login-active');
             this.appContainer.classList.add('sidebar-hidden');
+            if (this.btnLoginPublic) this.btnLoginPublic.style.display = 'none';
+
+        } else {
+            // Public Route layout
+            document.body.classList.add('public-route');
+            document.body.classList.remove('login-active');
+            this.appContainer.classList.add('sidebar-hidden');
+
+            // Set login/backoffice button state
+            if (this.btnLoginPublic) {
+                this.btnLoginPublic.style.display = 'inline-flex';
+                if (sessionRole) {
+                    this.btnLoginPublic.innerHTML = `<i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i><span>ระบบหลังบ้าน</span>`;
+                    this.btnLoginPublic.href = '#backend/dashboard';
+                } else {
+                    this.btnLoginPublic.innerHTML = `<i data-lucide="log-in" style="width: 14px; height: 14px;"></i><span>เข้าสู่ระบบ</span>`;
+                    this.btnLoginPublic.href = '#login';
+                }
+            }
         }
 
         // Highlight active Top Navigation Link
         document.querySelectorAll('.top-nav-links .top-nav-item').forEach(item => {
-            item.classList.toggle('active', item.getAttribute('data-nav') === hash);
+            const dataNav = item.getAttribute('data-nav');
+            item.classList.toggle('active', dataNav === hash);
         });
 
         // Highlight active Sidebar Menu item
@@ -251,9 +321,26 @@ class SchoolHubApp {
         lucide.createIcons();
 
         try {
-            switch(view) {
+            // Check for pages/:id routing
+            if (view.startsWith('pages/')) {
+                const pageId = view.split('/')[1];
+                await this.renderPage(pageId);
+                lucide.createIcons();
+                return;
+            }
+
+            // Strip "backend/" prefix if present
+            let renderKey = view;
+            if (view.startsWith('backend/')) {
+                renderKey = view.replace('backend/', '');
+            }
+
+            switch(renderKey) {
                 case 'homepage':
                     await this.renderHomepage();
+                    break;
+                case 'login':
+                    await this.renderLogin();
                     break;
                 case 'dashboard':
                     await this.renderDashboard();
@@ -279,11 +366,17 @@ class SchoolHubApp {
                 case 'medialibrary':
                     await this.renderMediaLibrary();
                     break;
+                case 'pages':
+                    await this.renderBackendPages();
+                    break;
+                case 'navigation':
+                    await this.renderBackendNavigation();
+                    break;
                 case 'settings':
                     await this.renderSettings();
                     break;
                 default:
-                    this.viewport.innerHTML = `<h2>404 Not Found</h2>`;
+                    this.viewport.innerHTML = `<div style="padding:4rem; text-align:center;"><h2>404 ไม่พบหน้าเพจที่ต้องการ</h2><a href="#homepage" class="btn btn-primary" style="margin-top:1rem;">กลับสู่หน้าหลัก</a></div>`;
             }
             lucide.createIcons();
         } catch (error) {
@@ -2310,6 +2403,506 @@ class SchoolHubApp {
                 window.location.hash = 'homepage';
             }
         });
+    }
+
+    // =========================================================================
+    // 11. TOP NAVIGATION DYNAMIC RENDERER
+    // =========================================================================
+    async renderTopNav() {
+        if (!this.topNavLinks) return;
+        try {
+            const menuItems = await window.dbService.getNavigationMenu();
+            const roots = menuItems.filter(m => !m.parent_id);
+            
+            let html = '';
+            for (const root of roots) {
+                const children = menuItems.filter(m => m.parent_id === root.id);
+                const targetUrl = root.link_type === 'page' ? `#pages/${root.page_id}` : root.url;
+                
+                if (children.length > 0) {
+                    html += `
+                        <div class="top-nav-dropdown">
+                            <a href="${targetUrl}" class="top-nav-item" data-nav="pages/${root.page_id || ''}" style="display: inline-flex; align-items: center; gap: 0.25rem; text-decoration: none;">
+                                <span>${root.title}</span>
+                                <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                            </a>
+                            <div class="top-nav-dropdown-content">
+                                ${children.map(child => {
+                                    const childUrl = child.link_type === 'page' ? `#pages/${child.page_id}` : child.url;
+                                    return `<a href="${childUrl}" style="text-decoration: none;">${child.title}</a>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <a href="${targetUrl}" class="top-nav-item" data-nav="${root.link_type === 'page' ? 'pages/' + root.page_id : (targetUrl.startsWith('#') ? targetUrl.substring(1) : targetUrl)}" style="text-decoration: none;">
+                            ${root.title}
+                        </a>
+                    `;
+                }
+            }
+            this.topNavLinks.innerHTML = html;
+            lucide.createIcons();
+        } catch (error) {
+            console.error("Error rendering top navigation:", error);
+        }
+    }
+
+    // =========================================================================
+    // 12. CUSTOM PAGE VIEWPORT RENDERER
+    // =========================================================================
+    async renderPage(id) {
+        this.viewport.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:300px; color:var(--text-muted);">
+            <i data-lucide="loader" class="animate-spin" style="width: 32px; height: 32px; margin-right: 8px;"></i>
+            <span>กำลังโหลดหน้าเพจ...</span>
+        </div>`;
+        lucide.createIcons();
+
+        try {
+            const page = await window.dbService.getPageById(id);
+            if (page) {
+                this.viewport.innerHTML = `
+                    <div style="max-width: 800px; margin: 2rem auto; padding: 0 1rem;">
+                        <article class="card" style="padding: 2.5rem; line-height: 1.8;">
+                            <h1 style="font-size: 2.25rem; font-weight: 700; color: var(--color-primary); margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem;">
+                                ${page.title}
+                            </h1>
+                            <div class="page-content-body" style="font-size: 1.05rem; color: var(--text-main);">
+                                ${page.content}
+                            </div>
+                        </article>
+                    </div>
+                `;
+            } else {
+                this.viewport.innerHTML = `
+                    <div style="max-width: 600px; margin: 5rem auto; text-align: center;">
+                        <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: var(--color-danger); margin-bottom: 1rem;"></i>
+                        <h2 style="color: var(--color-danger); font-size: 2rem; margin-bottom: 1rem;">ไม่พบหน้าที่คุณต้องการ</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 2rem;">หน้าเพจนี้อาจถูกลบหรือไม่มีอยู่ในระบบ</p>
+                        <a href="#homepage" class="btn btn-primary">กลับสู่หน้าหลัก</a>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        } catch (error) {
+            console.error("Error rendering page:", error);
+            this.viewport.innerHTML = `<div class="card" style="border-color: var(--color-danger); text-align: center; padding: 3rem;">
+                <h2>โหลดหน้าเพจผิดพลาด</h2>
+                <p>${error.message || error}</p>
+            </div>`;
+        }
+    }
+
+    // =========================================================================
+    // 13. LOGIN RENDERER
+    // =========================================================================
+    async renderLogin() {
+        this.viewport.innerHTML = `
+            <div class="login-card">
+                <div class="login-logo" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem; text-align: center;">
+                    <div style="background: var(--color-primary); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);">
+                        <i data-lucide="school" style="width: 30px; height: 30px; color: #ffffff;"></i>
+                    </div>
+                    <h2 style="font-size: 1.5rem; font-weight: 700; letter-spacing: 0.5px; color:#ffffff;">เข้าสู่ระบบจัดการโรงเรียน</h2>
+                    <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; margin-top: 0.25rem;">สำหรับผู้ดูแลระบบและบุคลากรโรงเรียน</p>
+                </div>
+                
+                <form id="login-form">
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; color: rgba(255,255,255,0.8);">ชื่อผู้ใช้ (Username)</label>
+                        <input type="text" id="login-username" class="form-control" required placeholder="กรอกชื่อผู้ใช้ของคุณ" style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); color: #fff; font-size: 0.9rem;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; color: rgba(255,255,255,0.8);">รหัสผ่าน (Password)</label>
+                        <input type="password" id="login-password" class="form-control" required placeholder="กรอกรหัสผ่านของคุณ" style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); color: #fff; font-size: 0.9rem;">
+                    </div>
+                    
+                    <div id="login-error-msg" style="display: none; color: #f87171; font-size: 0.85rem; margin-bottom: 1.25rem; text-align: center; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.2);">
+                        ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-weight: 600; font-size: 0.95rem; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                        เข้าสู่ระบบ
+                    </button>
+                    
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <a href="#homepage" style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; transition: color 0.2s;">
+                            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+                            <span>กลับสู่หน้าเว็บหลัก</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        `;
+        lucide.createIcons();
+
+        const form = document.getElementById('login-form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const errorMsg = document.getElementById('login-error-msg');
+            
+            let authenticatedRole = null;
+            if (username === 'admin' && password === 'admin1234') {
+                authenticatedRole = 'Admin';
+            } else if (username === 'teacher' && password === 'teacher1234') {
+                authenticatedRole = 'Teacher';
+            }
+            
+            if (authenticatedRole) {
+                sessionStorage.setItem('user_role', authenticatedRole);
+                this.handleRoleChange(authenticatedRole);
+                if (this.roleSwitcher) this.roleSwitcher.value = authenticatedRole;
+                window.location.hash = 'backend/dashboard';
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        });
+    }
+
+    // =========================================================================
+    // 14. BACKEND PAGES CMS RENDERER
+    // =========================================================================
+    async renderBackendPages() {
+        const pages = await window.dbService.getPages();
+        
+        this.viewport.innerHTML = `
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>จัดการหน้าเพจและบทความ</h1>
+                    <p>คุณสามารถเขียนเนื้อหาข่าวประชาสัมพันธ์ หรือข้อมูลทางวิชาการเพื่อแสดงบนหน้าเว็บไซต์</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="btn-add-page-backend">
+                        <i data-lucide="plus-circle" style="width: 16px; height: 16px; margin-right: 4px;"></i> เขียนหน้าเพจใหม่
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2><i data-lucide="file-text" style="color:var(--color-primary)"></i> รายการหน้าเพจทั้งหมดในระบบ</h2>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>หัวข้อหน้าเพจ</th>
+                                <th>ลิงก์อ้างอิง (Hash URL)</th>
+                                <th>วันที่สร้าง</th>
+                                <th style="text-align:right;">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pages.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">ไม่มีข้อมูลหน้าเพจในระบบ</td></tr>' : pages.map(p => `
+                                <tr>
+                                    <td style="font-weight:600; color:var(--text-main);">${p.title}</td>
+                                    <td><code style="background:var(--bg-card-hover); padding:0.2rem 0.4rem; border-radius:var(--radius-sm); font-size:0.8rem;">#pages/${p.id}</code></td>
+                                    <td>${new Date(p.created_at || Date.now()).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                                    <td style="text-align:right; display:flex; justify-content:flex-end; gap:0.5rem;">
+                                        <button class="btn btn-secondary btn-sm btn-edit-page" data-id="${p.id}" title="แก้ไข">
+                                            <i data-lucide="edit" style="width:14px; height:14px;"></i> แก้ไข
+                                        </button>
+                                        <button class="btn btn-secondary btn-danger btn-sm btn-delete-page" data-id="${p.id}" title="ลบ">
+                                            <i data-lucide="trash-2" style="width:14px; height:14px;"></i> ลบ
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        lucide.createIcons();
+
+        // Bind add page button
+        document.getElementById('btn-add-page-backend').addEventListener('click', () => this.showPageEditorForm(null));
+
+        // Bind edit & delete buttons
+        document.querySelectorAll('.btn-edit-page').forEach(btn => {
+            btn.addEventListener('click', () => this.showPageEditorForm(btn.getAttribute('data-id')));
+        });
+
+        document.querySelectorAll('.btn-delete-page').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ยืนยันที่จะลบหน้าเพจนี้หรือไม่? ลิงก์เมนูที่อ้างอิงถึงหน้าเพจนี้จะถูกลบไปด้วย")) {
+                    await window.dbService.deletePage(btn.getAttribute('data-id'));
+                    await this.renderTopNav();
+                    this.renderBackendPages();
+                }
+            });
+        });
+    }
+
+    async showPageEditorForm(pageId = null) {
+        let pageData = { title: '', content: '' };
+        if (pageId) {
+            pageData = await window.dbService.getPageById(pageId);
+        }
+
+        this.viewport.innerHTML = `
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>${pageId ? 'แก้ไขหน้าเพจ' : 'เขียนหน้าเพจใหม่'}</h1>
+                    <p>ป้อนรายละเอียดหัวข้อและโค้ด HTML ของหน้าเพจที่ต้องการบันทึก</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="btn-cancel-page-editor">ย้อนกลับ</button>
+                </div>
+            </div>
+
+            <div class="card" style="max-width:900px; margin: 0 auto;">
+                <form id="page-editor-form">
+                    <div class="form-group">
+                        <label>หัวข้อหน้าเพจ (Title)</label>
+                        <input type="text" class="form-control" id="page-title-input" value="${pageData.title}" required placeholder="เช่น ประวัติความเป็นมาของโรงเรียน">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>เนื้อหาของหน้าเพจ (Content - รองรับ HTML)</label>
+                        <textarea class="form-control" id="page-content-input" rows="18" style="font-family: monospace; font-size:0.9rem;" required placeholder="ป้อนเนื้อหาบทความด้วยโค้ด HTML หรือข้อความธรรมดา เช่น &lt;h2&gt;หัวข้อ&lt;/h2&gt;&lt;p&gt;เนื้อหา...&lt;/p&gt;">${pageData.content}</textarea>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color);">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-page-editor-footer">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึกข้อมูลหน้าเพจ</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        lucide.createIcons();
+
+        const handleCancel = () => this.renderBackendPages();
+        document.getElementById('btn-cancel-page-editor').addEventListener('click', handleCancel);
+        document.getElementById('btn-cancel-page-editor-footer').addEventListener('click', handleCancel);
+
+        const form = document.getElementById('page-editor-form');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('page-title-input').value.trim();
+            const content = document.getElementById('page-content-input').value.trim();
+
+            if (pageId) {
+                await window.dbService.updatePage(pageId, { title, content });
+            } else {
+                await window.dbService.addPage({ title, content });
+            }
+            await this.renderTopNav();
+            this.renderBackendPages();
+        };
+    }
+
+    // =========================================================================
+    // 15. BACKEND NAVIGATION MENU CMS RENDERER
+    // =========================================================================
+    async renderBackendNavigation() {
+        const navItems = await window.dbService.getNavigationMenu();
+        const pages = await window.dbService.getPages();
+
+        this.viewport.innerHTML = `
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>จัดการเมนูนำทางด้านบน (Top Navigation)</h1>
+                    <p>เพิ่ม แก้ไข หรือลบแถบเมนูด้านบนของเว็บไซต์ สามารถจัดกลุ่มทำเป็นเมนูย่อย (Sub-menu Dropdown) ได้</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="btn-add-nav-backend">
+                        <i data-lucide="plus-circle" style="width: 16px; height: 16px; margin-right: 4px;"></i> เพิ่มรายการเมนูใหม่
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2><i data-lucide="menu" style="color:var(--color-primary)"></i> โครงสร้างเมนูทั้งหมดในระบบ</h2>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>หัวข้อเมนู</th>
+                                <th>ประเภท</th>
+                                <th>ปลายทางลิงก์ (URL / Page ID)</th>
+                                <th>เมนูหลัก (Parent)</th>
+                                <th>ลำดับ</th>
+                                <th style="text-align:right;">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${navItems.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">ไม่มีรายการเมนูในระบบ</td></tr>' : navItems.map(n => {
+                                const parent = navItems.find(p => p.id === n.parent_id);
+                                const targetDesc = n.link_type === 'page' ? `หน้าเพจ: ${pages.find(p => p.id === n.page_id)?.title || n.page_id}` : `ลิงก์ภายนอก: ${n.url}`;
+                                return `
+                                    <tr>
+                                        <td style="font-weight:600; color:var(--text-main); ${n.parent_id ? 'padding-left: 2rem;' : ''}">
+                                            ${n.parent_id ? '<span style="color:var(--text-muted); margin-right:0.25rem;">└</span>' : ''} ${n.title}
+                                        </td>
+                                        <td><span class="badge ${n.link_type === 'page' ? 'badge-success' : 'badge-warning'}">${n.link_type === 'page' ? 'หน้าเพจ' : 'ลิงก์ภายนอก'}</span></td>
+                                        <td style="font-size:0.85rem; color:var(--text-muted);">${targetDesc}</td>
+                                        <td style="color:var(--text-muted);">${parent ? parent.title : '-'}</td>
+                                        <td>${n.display_order}</td>
+                                        <td style="text-align:right; display:flex; justify-content:flex-end; gap:0.5rem;">
+                                            <button class="btn btn-secondary btn-sm btn-edit-nav" data-id="${n.id}">
+                                                <i data-lucide="edit" style="width:14px; height:14px;"></i> แก้ไข
+                                            </button>
+                                            <button class="btn btn-secondary btn-danger btn-sm btn-delete-nav" data-id="${n.id}">
+                                                <i data-lucide="trash-2" style="width:14px; height:14px;"></i> ลบ
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        lucide.createIcons();
+
+        // Bind add menu button
+        document.getElementById('btn-add-nav-backend').addEventListener('click', () => this.showNavForm(null, navItems, pages));
+
+        // Bind edit & delete buttons
+        document.querySelectorAll('.btn-edit-nav').forEach(btn => {
+            btn.addEventListener('click', () => this.showNavForm(btn.getAttribute('data-id'), navItems, pages));
+        });
+
+        document.querySelectorAll('.btn-delete-nav').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm("ยืนยันที่จะลบเมนูนี้หรือไม่? หากลบเมนูหลัก เมนูย่อยทั้งหมดจะถูกลบไปด้วย")) {
+                    await window.dbService.deleteNavigationItem(btn.getAttribute('data-id'));
+                    await this.renderTopNav();
+                    this.renderBackendNavigation();
+                }
+            });
+        });
+    }
+
+    async showNavForm(navId = null, navItems = [], pages = []) {
+        let navData = { title: '', link_type: 'page', page_id: '', url: '', parent_id: '', display_order: 1 };
+        if (navId) {
+            navData = navItems.find(n => n.id === navId) || navData;
+        }
+
+        // Filter valid parents (cannot choose itself or its submenus as parent to avoid cycles)
+        const validParents = navItems.filter(n => !n.parent_id && n.id !== navId);
+
+        this.viewport.innerHTML = `
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>${navId ? 'แก้ไขรายการเมนู' : 'เพิ่มรายการเมนูใหม่'}</h1>
+                    <p>กำหนดรายละเอียด หัวข้อเมนู ลิงก์ปลายทาง และการจัดลำดับการแสดงผล</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="btn-cancel-nav-form">ย้อนกลับ</button>
+                </div>
+            </div>
+
+            <div class="card" style="max-width:600px; margin: 0 auto;">
+                <form id="nav-item-form">
+                    <div class="form-group">
+                        <label>หัวข้อเมนู (Menu Title)</label>
+                        <input type="text" class="form-control" id="nav-title" value="${navData.title}" required placeholder="เช่น ประวัติโรงเรียน">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>ประเภทลิงก์ (Link Type)</label>
+                        <select class="form-control" id="nav-link-type">
+                            <option value="page" ${navData.link_type === 'page' ? 'selected' : ''}>ลิงก์ไปหน้าเพจ CMS ภายในระบบ</option>
+                            <option value="external" ${navData.link_type === 'external' ? 'selected' : ''}>ระบุ URL/ลิงก์ภายนอกเอง</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="nav-page-wrapper" style="display: ${navData.link_type === 'page' ? 'block' : 'none'};">
+                        <label>เลือกหน้าเพจ CMS ที่ต้องการลิงก์ไป</label>
+                        <select class="form-control" id="nav-page-id">
+                            <option value="">-- เลือกหน้าเพจ --</option>
+                            ${pages.map(p => `<option value="${p.id}" ${navData.page_id === p.id ? 'selected' : ''}>${p.title}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="nav-url-wrapper" style="display: ${navData.link_type === 'external' ? 'block' : 'none'};">
+                        <label>ระบุ URL (ภายนอก หรือ ID อื่นๆ เช่น #backend/attendance)</label>
+                        <input type="text" class="form-control" id="nav-url" value="${navData.url || ''}" placeholder="เช่น https://google.com หรือ #backend/attendance">
+                    </div>
+
+                    <div class="form-group">
+                        <label>เลือกเมนูหลักเพื่อสร้างเมนูย่อย (Parent Menu - ปล่อยว่างหากต้องการให้เป็นเมนูหลัก)</label>
+                        <select class="form-control" id="nav-parent-id">
+                            <option value="">-- ไม่มี (เป็นเมนูหลัก) --</option>
+                            ${validParents.map(p => `<option value="${p.id}" ${navData.parent_id === p.id ? 'selected' : ''}>${p.title}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>ลำดับจัดเรียงแสดงผล (Display Order)</label>
+                        <input type="number" class="form-control" id="nav-display-order" value="${navData.display_order}" min="1" required>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color);">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-nav-form-footer">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึกข้อมูลเมนู</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        lucide.createIcons();
+
+        // Listen for type switch
+        const typeSelect = document.getElementById('nav-link-type');
+        const pageWrapper = document.getElementById('nav-page-wrapper');
+        const urlWrapper = document.getElementById('nav-url-wrapper');
+        const pageIdSelect = document.getElementById('nav-page-id');
+        const urlInput = document.getElementById('nav-url');
+
+        typeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'page') {
+                pageWrapper.style.display = 'block';
+                urlWrapper.style.display = 'none';
+                pageIdSelect.required = true;
+                urlInput.required = false;
+            } else {
+                pageWrapper.style.display = 'none';
+                urlWrapper.style.display = 'block';
+                pageIdSelect.required = false;
+                urlInput.required = true;
+            }
+        });
+
+        // Set required logic on load
+        if (navData.link_type === 'page') {
+            pageIdSelect.required = true;
+        } else {
+            urlInput.required = true;
+        }
+
+        const handleCancel = () => this.renderBackendNavigation();
+        document.getElementById('btn-cancel-nav-form').addEventListener('click', handleCancel);
+        document.getElementById('btn-cancel-nav-form-footer').addEventListener('click', handleCancel);
+
+        const form = document.getElementById('nav-item-form');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('nav-title').value.trim();
+            const link_type = typeSelect.value;
+            const page_id = link_type === 'page' ? pageIdSelect.value : null;
+            const url = link_type === 'external' ? urlInput.value.trim() : null;
+            const parent_id = document.getElementById('nav-parent-id').value || null;
+            const display_order = parseInt(document.getElementById('nav-display-order').value) || 1;
+
+            const data = { title, link_type, page_id, url, parent_id, display_order };
+
+            if (navId) {
+                await window.dbService.updateNavigationItem(navId, data);
+            } else {
+                await window.dbService.addNavigationItem(data);
+            }
+            await this.renderTopNav();
+            this.renderBackendNavigation();
+        };
     }
 
     // ==========================================
