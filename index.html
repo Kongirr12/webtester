@@ -21,27 +21,27 @@
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="app-container" id="app-container">
         
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <!-- Sidebar Navigation (Backend Office Only) -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo">
                 <div class="logo-icon">
                     <i data-lucide="school"></i>
                 </div>
-                <div class="logo-text">SchoolPortal</div>
+                <div class="logo-text">SchoolOffice</div>
             </div>
             
             <nav class="sidebar-menu-wrapper">
                 <ul class="sidebar-menu">
-                    <!-- Public Homepage -->
-                    <li class="menu-item active" data-target="homepage">
-                        <a href="#homepage">
-                            <i data-lucide="home"></i>
-                            <span>หน้าแรกโรงเรียน</span>
+                    <!-- Link back to Public website homepage -->
+                    <li class="menu-item" data-target="homepage" style="border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 0.5rem; padding-bottom: 0.5rem;">
+                        <a href="#homepage" style="color: #38bdf8;">
+                            <i data-lucide="arrow-left-circle"></i>
+                            <span>กลับสู่หน้าเว็บหลัก</span>
                         </a>
                     </li>
-                    
+
                     <!-- Office Backend Dashboard -->
                     <li class="menu-item" data-target="dashboard" data-roles="Admin,Teacher">
                         <a href="#dashboard">
@@ -73,10 +73,10 @@
                             <span>เช็คชื่อเข้าเรียน</span>
                         </a>
                     </li>
-                    <li class="menu-item" data-target="grades" data-roles="Admin,Teacher,Student">
+                    <li class="menu-item" data-target="grades" data-roles="Admin,Teacher">
                         <a href="#grades">
                             <i data-lucide="file-spreadsheet"></i>
-                            <span>คะแนน & ผลการเรียน</span>
+                            <span>บันทึกคะแนนสอบ</span>
                         </a>
                     </li>
                     
@@ -87,10 +87,10 @@
                             <span>ระบบงบประมาณ</span>
                         </a>
                     </li>
-                    <li class="menu-item" data-target="medialibrary" data-roles="Admin,Teacher,Student">
+                    <li class="menu-item" data-target="medialibrary" data-roles="Admin,Teacher">
                         <a href="#medialibrary">
                             <i data-lucide="folder-git-branch"></i>
-                            <span>คลังสื่อการเรียนรู้</span>
+                            <span>คลังสื่อ (หลังบ้าน)</span>
                         </a>
                     </li>
                     
@@ -116,11 +116,25 @@
             
             <!-- Top Header Navbar -->
             <header class="main-header">
-                <!-- Search bar -->
-                <div class="header-search">
-                    <i data-lucide="search" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
-                    <input type="text" placeholder="ค้นหาข้อมูล..." id="global-search">
+                <!-- Brand logo shown only when left sidebar is hidden -->
+                <div class="header-logo" id="header-logo">
+                    <div class="logo-icon">
+                        <i data-lucide="school"></i>
+                    </div>
+                    <div class="logo-text" style="font-weight: 700; font-size: 1.15rem; color: var(--color-primary);">SchoolPortal</div>
                 </div>
+
+                <!-- Public Navigation Links (Top Menu) -->
+                <nav class="top-nav-links" id="top-nav-links">
+                    <a href="#homepage" class="top-nav-item active" data-nav="homepage">หน้าแรก</a>
+                    <a href="#medialibrary" class="top-nav-item" data-nav="medialibrary">คลังสื่อการเรียนรู้</a>
+                    <a href="#grades" class="top-nav-item" data-nav="grades" id="top-nav-student-grades">ตรวจผลการเรียน</a>
+                    <!-- Backoffice entry button (visible to Admin/Teacher only) -->
+                    <a href="#dashboard" class="top-nav-item backoffice-entry-btn" data-nav="dashboard" id="top-nav-backoffice" style="display: none; color: var(--color-primary); font-weight: 700;">
+                        <i data-lucide="lock" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 2px;"></i>
+                        เข้าสู่ระบบสำนักงาน
+                    </a>
+                </nav>
                 
                 <!-- Navbar Actions -->
                 <div class="header-actions">
