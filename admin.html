@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเนื้อหา (CMS Dashboard) - โรงเรียนมหาชัยพิทยาคาร</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Supabase JS Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- 1. LOGIN AREA -->
+    <div id="login-panel" class="admin-login-card">
+        <div class="admin-login-title">
+            <i class="fa-solid fa-shield-halved" style="font-size:36px; margin-bottom:15px; display:block;"></i>
+            ผู้ดูแลระบบ (CMS Login)
+        </div>
+        <div id="login-error-msg" style="color:red; font-size:13px; margin-bottom:15px; text-align:center; display:none;"></div>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email"><i class="fa-solid fa-envelope"></i> อีเมล / อีเมลผู้ใช้</label>
+                <input type="email" id="login-email" class="form-control" placeholder="admin@mahachai.ac.th" required>
+            </div>
+            <div class="form-group">
+                <label for="login-password"><i class="fa-solid fa-key"></i> รหัสผ่าน</label>
+                <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary">เข้าสู่ระบบ</button>
+        </form>
+        
+        <div style="margin-top: 25px; border-top: 1px dashed var(--border-color); padding-top: 15px; text-align: center;">
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+                💡 กำลังทดลองใช้งาน? คุณสามารถคลิกปุ่มด้านล่างเพื่อเข้าสู่ระบบ Demo ทันทีโดยไม่ต้องตั้งค่าฐานข้อมูล
+            </p>
+            <button id="bypass-login-btn" class="btn-secondary" style="font-size:12px; padding: 6px 12px; width: 100%;">
+                🗝️ เข้าสู่โหมดทดลองระบบ (Demo Mode)
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. DASHBOARD AREA (Hidden by default, shown after login) -->
+    <div id="dashboard-panel" class="admin-layout" style="display: none;">
+        
+        <!-- Admin Sidebar Navigation -->
+        <aside class="admin-sidebar">
+            <div class="admin-brand">
+                <i class="fa-solid fa-graduation-cap"></i> CMS มหาชัยพิทยาคาร
+                <div id="demo-mode-badge" class="badge badge-danger" style="margin-top: 5px; display: none;">โหมดทดลองระบบ</div>
+            </div>
+            <nav>
+                <ul class="admin-menu">
+                    <li><a href="#" class="admin-menu-link active" data-target="navbar-tab"><i class="fa-solid fa-list"></i> จัดการ Navbar</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="banners-tab"><i class="fa-solid fa-images"></i> จัดการ Banners</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="news-tab"><i class="fa-solid fa-bullhorn"></i> จัดการประกาศข่าวสาร</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="newsletter-tab"><i class="fa-solid fa-file-pdf"></i> จัดการจดหมายข่าว</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="executives-tab"><i class="fa-solid fa-user-tie"></i> จัดการผู้บริหาร</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="sidebar-links-tab"><i class="fa-solid fa-link"></i> จัดการ e-Service & ลิงก์</a></li>
+                    <li><a href="#" class="admin-menu-link" data-target="settings-tab"><i class="fa-solid fa-gears"></i> จัดการ Facebook Embed</a></li>
+                </ul>
+            </nav>
+            <button id="logout-btn" class="admin-logout-btn"><i class="fa-solid fa-power-off"></i> ออกจากระบบ</button>
+        </aside>
+
+        <!-- Admin Content Area -->
+        <main class="admin-content">
+            
+            <!-- Navbar Tab -->
+            <section id="navbar-tab" class="admin-tab-content">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-list"></i> จัดการ Navbar เมนู</h2>
+                    <button class="admin-btn-add" id="btn-add-navbar"><i class="fa-solid fa-plus"></i> เพิ่มเมนูนำทาง</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ชื่อเมนู</th>
+                                <th>ประเภทปลายทาง</th>
+                                <th>ลิงก์/เมนูหลัก</th>
+                                <th>ลำดับ</th>
+                                <th>สถานะ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-navbar-list">
+                            <!-- แถวข้อมูลตารางเมนู -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Banners Tab -->
+            <section id="banners-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-images"></i> จัดการภาพ Banners</h2>
+                    <button class="admin-btn-add" id="btn-add-banner"><i class="fa-solid fa-plus"></i> เพิ่มภาพแบนเนอร์</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ภาพตัวอย่าง</th>
+                                <th>หัวข้อแบนเนอร์</th>
+                                <th>ประเภท</th>
+                                <th>ลำดับ</th>
+                                <th>สถานะ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-banners-list">
+                            <!-- แถวข้อมูลแบนเนอร์ -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- News Tab -->
+            <section id="news-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-bullhorn"></i> จัดการข่าวสารประกาศโรงเรียน</h2>
+                    <button class="admin-btn-add" id="btn-add-news"><i class="fa-solid fa-plus"></i> เพิ่มประกาศข่าว</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ภาพปก</th>
+                                <th>หัวข้อประกาศข่าว</th>
+                                <th>วันที่เผยแพร่</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-news-list">
+                            <!-- แถวข้อมูลข่าว -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Newsletter Tab -->
+            <section id="newsletter-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-file-pdf"></i> จัดการจดหมายข่าวประชาสัมพันธ์</h2>
+                    <button class="admin-btn-add" id="btn-add-newsletter"><i class="fa-solid fa-plus"></i> อัปโหลดจดหมายข่าว</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รูปจดหมายข่าว</th>
+                                <th>ชื่อจดหมายข่าว</th>
+                                <th>ปีการศึกษา</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-newsletter-list">
+                            <!-- แถวข้อมูลจดหมายข่าว -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Executives Tab -->
+            <section id="executives-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-user-tie"></i> จัดการทำเนียบผู้บริหาร</h2>
+                    <button class="admin-btn-add" id="btn-add-exec"><i class="fa-solid fa-plus"></i> เพิ่มรายชื่อผู้บริหาร</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รูปภาพ</th>
+                                <th>ชื่อ-นามสกุล</th>
+                                <th>ตำแหน่ง</th>
+                                <th>ลำดับ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-exec-list">
+                            <!-- แถวข้อมูลผู้บริหาร -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sidebar Links Tab -->
+            <section id="sidebar-links-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-link"></i> จัดการ e-Service & ลิงก์หน่วยงาน</h2>
+                    <button class="admin-btn-add" id="btn-add-link"><i class="fa-solid fa-plus"></i> เพิ่มลิงก์ / บริการ</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รูปภาพ/ไอคอน</th>
+                                <th>ชื่อลิงก์</th>
+                                <th>ลิ้งก์ URL</th>
+                                <th>ประเภท</th>
+                                <th>ลำดับ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-links-list">
+                            <!-- แถวข้อมูลลิงก์ -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Tab (Facebook Settings) -->
+            <section id="settings-tab" class="admin-tab-content" style="display: none;">
+                <div class="admin-page-header">
+                    <h2 class="admin-page-title"><i class="fa-solid fa-gears"></i> จัดการ Facebook Page Embed</h2>
+                </div>
+                <div class="card" style="max-width: 600px;">
+                    <form id="facebook-config-form">
+                        <div class="form-group">
+                            <label for="fb-url-input">Facebook Page URL หรือ Embed Code (Iframe)</label>
+                            <textarea id="fb-url-input" class="form-control" rows="6" placeholder="https://www.facebook.com/your-school-page หรือ วาง iframe code ที่ได้จาก Facebook Developer Plugin" required></textarea>
+                            <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">
+                                💡 แนะนำ: วาง URL เพจ Facebook เช่น <code>https://www.facebook.com/facebook</code> หรือ นำ iframe จาก Facebook Page Plugin มาวางโดยตรงได้
+                            </p>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: auto; padding: 10px 24px;">บันทึกข้อมูลตั้งค่า</button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- 3. MODALS -->
+    
+    <!-- Navbar Modal -->
+    <div id="modal-navbar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-navbar-title">เพิ่ม/แก้ไข เมนูนำทาง</h3>
+                <button class="modal-close" onclick="closeModal('modal-navbar')">&times;</button>
+            </div>
+            <form id="form-navbar">
+                <input type="hidden" id="nav-id">
+                <div class="form-group">
+                    <label for="nav-label">ชื่อเมนู (ภาษาไทย)</label>
+                    <input type="text" id="nav-label" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="nav-parent">เมนูหลัก (กรณีต้องการสร้างเป็นเมนูย่อย)</label>
+                    <select id="nav-parent" class="form-control">
+                        <option value="">-- เป็นเมนูหลัก --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="nav-type">การทำงานปลายทาง</label>
+                    <select id="nav-type" class="form-control" onchange="toggleNavbarFields()">
+                        <option value="link">ผูกลิงก์ปลายทางภายนอก (URL)</option>
+                        <option value="content">สร้างหน้าเพจใหม่ภายในเว็บ (HTML Editor)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="nav-url-group">
+                    <label for="nav-url">ลิงก์ URL ปลายทาง</label>
+                    <input type="text" id="nav-url" class="form-control" placeholder="https://...">
+                </div>
+                <div class="form-group" id="nav-content-group" style="display: none;">
+                    <label for="nav-content">เนื้อหาของหน้าเพจ (HTML/ข้อความ)</label>
+                    <textarea id="nav-content" class="form-control" rows="10" placeholder="กรอกข้อมูลวิสัยทัศน์ ประวัติ หรือรูปภาพลงในหน้านี้ (สามารถเขียนแท็ก HTML ได้)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="nav-order">ลำดับการแสดงผล</label>
+                    <input type="number" id="nav-order" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="nav-active" checked> เปิดใช้งานการแสดงผลเมนู
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-navbar')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Banners Modal -->
+    <div id="modal-banner" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-banner-title">เพิ่ม/แก้ไข แบนเนอร์</h3>
+                <button class="modal-close" onclick="closeModal('modal-banner')">&times;</button>
+            </div>
+            <form id="form-banner">
+                <input type="hidden" id="banner-id">
+                <div class="form-group">
+                    <label for="banner-title">หัวข้อข้อความคำอธิบาย</label>
+                    <input type="text" id="banner-title" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="banner-type">ประเภทแบนเนอร์</label>
+                    <select id="banner-type" class="form-control">
+                        <option value="main">แบนเนอร์หลักบนสไลเดอร์</option>
+                        <option value="festival">ป้ายประกาศวันสำคัญ (เทศกาล)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="banner-file">อัปโหลดรูปภาพแบนเนอร์</label>
+                    <input type="file" id="banner-file" class="form-control" accept="image/*">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">หรือใส่ URL รูปภาพแทนด้านล่าง</p>
+                    <input type="text" id="banner-url" class="form-control" placeholder="https://..." style="margin-top:6px;">
+                    <img id="banner-preview" class="image-preview">
+                </div>
+                <div class="form-group">
+                    <label for="banner-order">ลำดับ</label>
+                    <input type="number" id="banner-order" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="banner-active" checked> เปิดใช้งาน
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-banner')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- News Modal -->
+    <div id="modal-news" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-news-title">เพิ่ม/แก้ไข ข่าวสารประกาศ</h3>
+                <button class="modal-close" onclick="closeModal('modal-news')">&times;</button>
+            </div>
+            <form id="form-news">
+                <input type="hidden" id="news-id">
+                <div class="form-group">
+                    <label for="news-title-input">หัวข้อประกาศข่าวสาร</label>
+                    <input type="text" id="news-title-input" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="news-file">อัปโหลดภาพปกข่าว</label>
+                    <input type="file" id="news-file" class="form-control" accept="image/*">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">หรือใส่ URL รูปภาพแทนด้านล่าง</p>
+                    <input type="text" id="news-url" class="form-control" placeholder="https://..." style="margin-top:6px;">
+                    <img id="news-preview" class="image-preview">
+                </div>
+                <div class="form-group">
+                    <label for="news-content-input">เนื้อหาข่าวประกาศอย่างละเอียด</label>
+                    <textarea id="news-content-input" class="form-control" rows="8" placeholder="กรอกเนื้อหารายละเอียดของข่าวที่นี่..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-news')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Newsletter Modal -->
+    <div id="modal-newsletter" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-newsletter-title">เพิ่ม/แก้ไข จดหมายข่าวประชาสัมพันธ์</h3>
+                <button class="modal-close" onclick="closeModal('modal-newsletter')">&times;</button>
+            </div>
+            <form id="form-newsletter">
+                <input type="hidden" id="newsletter-id">
+                <div class="form-group">
+                    <label for="newsletter-title-input">ชื่อจดหมายข่าว</label>
+                    <input type="text" id="newsletter-title-input" class="form-control" required placeholder="เช่น จดหมายข่าวประจำสัปดาห์ที่ 2 เดือนมิถุนายน">
+                </div>
+                <div class="form-group">
+                    <label for="newsletter-year">ปีการศึกษา</label>
+                    <input type="text" id="newsletter-year" class="form-control" required placeholder="เช่น 2568">
+                </div>
+                <div class="form-group">
+                    <label for="newsletter-file">อัปโหลดรูปภาพหน้าปกจดหมายข่าว</label>
+                    <input type="file" id="newsletter-file" class="form-control" accept="image/*">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">หรือใส่ URL รูปภาพแทนด้านล่าง</p>
+                    <input type="text" id="newsletter-url" class="form-control" placeholder="https://..." style="margin-top:6px;">
+                    <img id="newsletter-preview" class="image-preview">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-newsletter')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Executives Modal -->
+    <div id="modal-exec" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-exec-title">เพิ่ม/แก้ไข รายชื่อผู้บริหาร</h3>
+                <button class="modal-close" onclick="closeModal('modal-exec')">&times;</button>
+            </div>
+            <form id="form-exec">
+                <input type="hidden" id="exec-id">
+                <div class="form-group">
+                    <label for="exec-name-input">ชื่อ-นามสกุล</label>
+                    <input type="text" id="exec-name-input" class="form-control" required placeholder="เช่น นายวิทยา มหาชัยดี">
+                </div>
+                <div class="form-group">
+                    <label for="exec-position-input">ตำแหน่งผู้บริหาร</label>
+                    <input type="text" id="exec-position-input" class="form-control" required placeholder="เช่น ผู้อำนวยการโรงเรียน">
+                </div>
+                <div class="form-group">
+                    <label for="exec-file">อัปโหลดรูปภาพผู้บริหาร</label>
+                    <input type="file" id="exec-file" class="form-control" accept="image/*">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">หรือใส่ URL รูปภาพแทนด้านล่าง</p>
+                    <input type="text" id="exec-url" class="form-control" placeholder="https://..." style="margin-top:6px;">
+                    <img id="exec-preview" class="image-preview">
+                </div>
+                <div class="form-group">
+                    <label for="exec-order">ลำดับทำเนียบผู้บริหาร</label>
+                    <input type="number" id="exec-order" class="form-control" value="0">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-exec')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar Links Modal -->
+    <div id="modal-link" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-link-title">เพิ่ม/แก้ไข ลิงก์และบริการ</h3>
+                <button class="modal-close" onclick="closeModal('modal-link')">&times;</button>
+            </div>
+            <form id="form-link">
+                <input type="hidden" id="link-id">
+                <div class="form-group">
+                    <label for="link-title-input">ชื่อลิงก์ / ปุ่มบริการ</label>
+                    <input type="text" id="link-title-input" class="form-control" required placeholder="เช่น ระบบ SGS นักเรียน">
+                </div>
+                <div class="form-group">
+                    <label for="link-url-input">ลิงก์ URL ปลายทาง</label>
+                    <input type="text" id="link-url-input" class="form-control" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label for="link-type">ประเภทรายการ</label>
+                    <select id="link-type" class="form-control" onchange="toggleLinkIconField()">
+                        <option value="agency">แบนเนอร์หน่วยงานภายนอก (Sidebar Image Banner)</option>
+                        <option value="eservice">ปุ่มเมนู e-Service (Sidebar Icon Button)</option>
+                    </select>
+                </div>
+                
+                <!-- ฟิลด์สำหรับ e-Service: เลือก FontAwesome Icon -->
+                <div class="form-group" id="link-icon-group" style="display:none;">
+                    <label for="link-icon-input">ชื่อคลาสไอคอน FontAwesome (เฉพาะ e-Service)</label>
+                    <input type="text" id="link-icon-input" class="form-control" placeholder="เช่น fa-solid fa-graduation-cap">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                        ตัวอย่างคลาส: <code>fa-solid fa-address-card</code>, <code>fa-solid fa-book-open-reader</code>, <code>fa-solid fa-envelope-open-text</code>
+                    </p>
+                </div>
+                
+                <!-- ฟิลด์สำหรับแบนเนอร์หน่วยงาน: อัปโหลดภาพแบนเนอร์ -->
+                <div class="form-group" id="link-image-group">
+                    <label for="link-file">อัปโหลดแบนเนอร์ภาพหน่วยงาน</label>
+                    <input type="file" id="link-file" class="form-control" accept="image/*">
+                    <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">หรือใส่ URL รูปภาพแทนด้านล่าง</p>
+                    <input type="text" id="link-url-image" class="form-control" placeholder="https://..." style="margin-top:6px;">
+                    <img id="link-preview" class="image-preview">
+                </div>
+                
+                <div class="form-group">
+                    <label for="link-order">ลำดับจัดวาง</label>
+                    <input type="number" id="link-order" class="form-control" value="0">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-link')">ยกเลิก</button>
+                    <button type="submit" class="btn-submit">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Configurations & Logics -->
+    <script src="js/config.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
