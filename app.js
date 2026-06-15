@@ -1,4 +1,4 @@
-// Main Application Controller (SchoolHub Dashboard)
+// Main Application Controller (SchoolHub Dashboard & Portal)
 
 class SchoolHubApp {
     constructor() {
@@ -15,6 +15,7 @@ class SchoolHubApp {
         this.bannerInterval = null;
 
         // Cache DOM elements
+        this.appContainer = document.getElementById('app-container');
         this.viewport = document.getElementById('page-viewport');
         this.roleSwitcher = document.getElementById('role-switcher');
         this.themeToggle = document.getElementById('theme-toggle');
@@ -25,6 +26,10 @@ class SchoolHubApp {
         this.cmsToggleWrapper = document.getElementById('cms-toggle-wrapper');
         this.cmsToggleBtn = document.getElementById('cms-toggle-btn');
         
+        // Top Nav elements
+        this.topNavBackoffice = document.getElementById('top-nav-backoffice');
+        this.topNavStudentGrades = document.getElementById('top-nav-student-grades');
+
         // Modal elements
         this.modalBackdrop = document.getElementById('modal-backdrop');
         this.modalTitle = document.getElementById('modal-title');
@@ -150,7 +155,6 @@ class SchoolHubApp {
             this.cmsToggleBtn.querySelector('span').textContent = 'เปิดโหมดแก้ไขสด';
             document.body.classList.remove('cms-edit-active');
         }
-        // Force refresh current view to update edit controls
         this.renderView(this.currentView);
     }
 
@@ -161,22 +165,25 @@ class SchoolHubApp {
         if (role === 'Admin') {
             this.activeUser = { name: 'ผู้ดูแลระบบ', role: 'Administrator', avatar: 'AD' };
             this.cmsToggleWrapper.style.display = 'block';
-        } else {
-            this.activeUser = (role === 'Teacher') 
-                ? { name: 'ครูสมศักดิ์ รักเรียน', role: 'คุณครูผู้สอน', avatar: 'T' }
-                : { name: 'เด็กชายวิชัย ใจกล้า', role: 'นักเรียน / ผู้ปกครอง', avatar: 'S' };
-            
+            this.topNavBackoffice.style.display = 'inline-flex';
+            this.topNavStudentGrades.style.display = 'none'; // Admins/Teachers don't check grades as students
+        } else if (role === 'Teacher') {
+            this.activeUser = { name: 'ครูสมศักดิ์ รักเรียน', role: 'คุณครูผู้สอน', avatar: 'T' };
             this.cmsToggleWrapper.style.display = 'none';
-            if (this.cmsEditMode) {
-                this.toggleCmsEditMode(); // Turn off CMS edit mode if not Admin
-            }
+            this.topNavBackoffice.style.display = 'inline-flex';
+            this.topNavStudentGrades.style.display = 'none';
+        } else if (role === 'Student') {
+            this.activeUser = { name: 'เด็กชายวิชัย ใจกล้า', role: 'นักเรียน / ผู้ปกครอง', avatar: 'S' };
+            this.cmsToggleWrapper.style.display = 'none';
+            this.topNavBackoffice.style.display = 'none';
+            this.topNavStudentGrades.style.display = 'inline-flex';
         }
         
         this.userDisplayName.textContent = this.activeUser.name;
         this.userDisplayRole.textContent = this.activeUser.role;
         this.userAvatar.textContent = this.activeUser.avatar;
 
-        // Menu visibility based on roles
+        // Menu visibility based on roles inside Sidebar
         document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
             const allowedRoles = item.getAttribute('data-roles');
             if (allowedRoles) {
@@ -187,12 +194,17 @@ class SchoolHubApp {
             }
         });
 
-        // Redirect if on forbidden page
+        // If currently viewing a page that is restricted to the new role, redirect
         const currentMenuItem = document.querySelector(`.sidebar-menu .menu-item[data-target="${this.currentView}"]`);
-        if (currentMenuItem && currentMenuItem.style.display === 'none') {
+        const isRestrictedForRole = currentMenuItem && currentMenuItem.style.display === 'none';
+        const isBackendView = !['homepage', 'medialibrary', 'grades'].includes(this.currentView);
+        
+        if (role === 'Student' && isBackendView) {
+            window.location.hash = 'homepage';
+        } else if (isRestrictedForRole) {
             window.location.hash = 'homepage';
         } else {
-            this.renderView(this.currentView);
+            this.handleRouting();
         }
     }
 
@@ -207,7 +219,23 @@ class SchoolHubApp {
             this.bannerInterval = null;
         }
 
-        // Active sidebar item
+        // --- NEW SIDEBAR ACCORDING TO USER'S REQUEST ---
+        // Sidebar is VISIBLE ONLY when the role is Admin or Teacher AND they are NOT on the public Homepage
+        const loggedIn = this.currentRole === 'Admin' || this.currentRole === 'Teacher';
+        const isPublicPage = hash === 'homepage'; // Sidebar is hidden on homepage
+        
+        if (loggedIn && !isPublicPage) {
+            this.appContainer.classList.remove('sidebar-hidden');
+        } else {
+            this.appContainer.classList.add('sidebar-hidden');
+        }
+
+        // Highlight active Top Navigation Link
+        document.querySelectorAll('.top-nav-links .top-nav-item').forEach(item => {
+            item.classList.toggle('active', item.getAttribute('data-nav') === hash);
+        });
+
+        // Highlight active Sidebar Menu item
         document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
             item.classList.toggle('active', item.getAttribute('data-target') === hash);
         });
@@ -264,8 +292,8 @@ class SchoolHubApp {
                 <div class="card" style="border-color: var(--color-danger); text-align: center; padding: 3rem;">
                     <i data-lucide="alert-triangle" style="width: 48px; height: 48px; color: var(--color-danger); margin: 0 auto 1rem auto;"></i>
                     <h2 style="color: var(--color-danger); margin-bottom: 0.5rem;">การเชื่อมต่อฐานข้อมูลล้มเหลว</h2>
-                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">ระบบไม่สามารถดึงข้อมูลที่ต้องการได้: ${error.message || error}</p>
-                    <button class="btn btn-primary" onclick="location.reload()">ลองโหลดใหม่อีกครั้ง</button>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">ระบบไม่สามารถดึงข้อมูลได้: ${error.message || error}</p>
+                    <button class="btn btn-primary" onclick="location.reload()">ลองใหม่</button>
                 </div>
             `;
             lucide.createIcons();
@@ -282,13 +310,9 @@ class SchoolHubApp {
         const executives = await window.dbService.getExecutives();
         const links = await window.dbService.getQuickLinks();
         
-        // Re-load configs
         this.homepageConfigs = await window.dbService.getHomepageConfigs();
-
-        // Helper to check visibility
         const isVisible = (key) => this.homepageConfigs[key] !== false || this.cmsEditMode;
 
-        // Render sections helper
         const renderCmsControls = (key, title, addBtnId = '', addBtnText = '') => {
             if (!this.cmsEditMode) return '';
             const checked = this.homepageConfigs[key] !== false ? 'checked' : '';
@@ -304,7 +328,6 @@ class SchoolHubApp {
             `;
         };
 
-        // RENDER PORTAL STRUCTURE
         let portalHTML = `
             <div class="page-header">
                 <div class="page-title">
@@ -317,7 +340,6 @@ class SchoolHubApp {
         // 1. Banner Carousel Section
         if (isVisible('banner')) {
             const displayStyle = this.homepageConfigs['banner'] === false ? 'style="opacity: 0.5;"' : '';
-            
             let bannerSlidesHTML = '';
             let dotsHTML = '';
             
@@ -363,15 +385,12 @@ class SchoolHubApp {
         // 2. Main Columns Layout: Left (72%) vs Right (28%)
         portalHTML += `<div class="homepage-grid">`;
 
-        // ==========================================
         // LEFT COLUMN (72%)
-        // ==========================================
         portalHTML += `<div class="homepage-left-col" style="display: flex; flex-direction: column; gap: 2rem;">`;
 
         // A. News & Activities Section
         if (isVisible('news_activities')) {
             const displayStyle = this.homepageConfigs['news_activities'] === false ? 'style="opacity: 0.5;"' : '';
-            
             let newsCardsHTML = '';
             if (news.length === 0) {
                 newsCardsHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 2rem; color:var(--text-muted);">ไม่มีข้อมูลข่าวกิจกรรม</div>`;
@@ -417,7 +436,6 @@ class SchoolHubApp {
         // B. PR Newsletters Section
         if (isVisible('pr_newsletters')) {
             const displayStyle = this.homepageConfigs['pr_newsletters'] === false ? 'style="opacity: 0.5;"' : '';
-            
             let newslettersHTML = '';
             if (newsletters.length === 0) {
                 newslettersHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">ไม่มีจดหมายข่าวประชาสัมพันธ์</div>`;
@@ -458,7 +476,6 @@ class SchoolHubApp {
         // C. Facebook Page Section
         if (isVisible('facebook_embed')) {
             const displayStyle = this.homepageConfigs['facebook_embed'] === false ? 'style="opacity: 0.5;"' : '';
-            
             portalHTML += `
                 <div class="cms-editable-section" ${displayStyle}>
                     ${renderCmsControls('facebook_embed', 'กล่องเฟสบุ๊ค')}
@@ -505,15 +522,12 @@ class SchoolHubApp {
 
         portalHTML += `</div>`; // End Left Column
 
-        // ==========================================
         // RIGHT COLUMN (28% SIDEBAR)
-        // ==========================================
         portalHTML += `<div class="homepage-right-col" style="display: flex; flex-direction: column; gap: 2rem;">`;
 
         // A. Executive Board Section
         if (isVisible('executives')) {
             const displayStyle = this.homepageConfigs['executives'] === false ? 'style="opacity: 0.5;"' : '';
-            
             let execsHTML = '';
             if (executives.length === 0) {
                 execsHTML = `<div style="text-align:center; padding:1rem; color:var(--text-muted);">ไม่มีข้อมูลผู้บริหาร</div>`;
@@ -553,11 +567,10 @@ class SchoolHubApp {
             `;
         }
 
-        // B. Quick Links Section (Internal/External Agencies)
+        // B. Quick Links Section
         if (isVisible('quick_links')) {
             const displayStyle = this.homepageConfigs['quick_links'] === false ? 'style="opacity: 0.5;"' : '';
             const agencyLinks = links.filter(l => l.type === 'agency');
-            
             let linksHTML = '';
             if (agencyLinks.length === 0) {
                 linksHTML = `<div style="text-align:center; padding:0.5rem; color:var(--text-muted); font-size:0.8rem;">ไม่มีลิงก์หน่วยงาน</div>`;
@@ -596,7 +609,6 @@ class SchoolHubApp {
         if (isVisible('eservices')) {
             const displayStyle = this.homepageConfigs['eservices'] === false ? 'style="opacity: 0.5;"' : '';
             const eserviceLinks = links.filter(l => l.type === 'eservice');
-            
             let eservicesHTML = '';
             if (eserviceLinks.length === 0) {
                 eservicesHTML = `<div style="text-align:center; padding:0.5rem; color:var(--text-muted); font-size:0.8rem;">ไม่มีลิงก์บริการ E-Service</div>`;
@@ -605,7 +617,7 @@ class SchoolHubApp {
                     eservicesHTML += `
                         <div class="executive-sidebar-card" style="padding:0.6rem; align-items:center; gap:0.5rem;">
                             <a href="${l.url}" target="_blank" class="link-sidebar-label" style="flex:1;">
-                                <i data-lucide="${l.icon || 'link'}" style="width:16px;height:16px;color:var(--color-success);flex-shrink:0;"></i>
+                                <i data-lucide="${l.icon || 'link'}" style="width:16px;height:16px;color:var(--color-warning);flex-shrink:0;"></i>
                                 <span>${l.name}</span>
                             </a>
                             ${this.cmsEditMode ? `
@@ -635,43 +647,32 @@ class SchoolHubApp {
         portalHTML += `</div>`; // End Grid
 
         this.viewport.innerHTML = portalHTML;
-        
-        // Initialize Banner Carousel Autoplay
         this.initBannerSlider(banners.length);
 
-        // Bind CMS edit actions
         if (this.cmsEditMode) {
             this.bindCmsEditModeActions();
         }
     }
 
-    // Carousel Logic
     initBannerSlider(slideCount) {
         if (slideCount <= 1) return;
-        
         const track = document.getElementById('banner-track');
         const dots = document.querySelectorAll('.banner-dot');
         this.activeBannerIndex = 0;
 
         const updateSlider = (index) => {
             this.activeBannerIndex = index;
-            if (track) {
-                track.style.transform = `translateX(-${index * 100}%)`;
-            }
-            dots.forEach((dot, idx) => {
-                dot.classList.toggle('active', idx === index);
-            });
+            if (track) track.style.transform = `translateX(-${index * 100}%)`;
+            dots.forEach((dot, idx) => dot.classList.toggle('active', idx === index));
         };
 
-        // Click dots to change
         dots.forEach(dot => {
-            dot.addEventListener('click', (e) => {
+            dot.addEventListener('click', () => {
                 const idx = parseInt(dot.getAttribute('data-index'));
                 updateSlider(idx);
             });
         });
 
-        // Autoplay
         if (this.bannerInterval) clearInterval(this.bannerInterval);
         this.bannerInterval = setInterval(() => {
             let nextIndex = this.activeBannerIndex + 1;
@@ -680,28 +681,21 @@ class SchoolHubApp {
         }, 4000);
     }
 
-    // CMS Handlers
     bindCmsEditModeActions() {
-        // 1. Show/Hide Section Toggles
         document.querySelectorAll('.cms-section-toggle').forEach(toggle => {
-            toggle.addEventListener('change', async (e) => {
+            toggle.addEventListener('change', async () => {
                 const key = toggle.getAttribute('data-section');
                 const visible = toggle.checked;
                 await window.dbService.updateHomepageConfigVisibility(key, visible);
-                // Dynamically fade out or in
                 const parent = toggle.closest('.cms-editable-section');
-                if (parent) {
-                    parent.style.opacity = visible ? '1' : '0.5';
-                }
+                if (parent) parent.style.opacity = visible ? '1' : '0.5';
             });
         });
 
-        // 2. Delete actions
         document.querySelectorAll('.btn-delete-banner').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const id = btn.getAttribute('data-id');
-                if (confirm("ลบภาพแบนเนอร์นี้?")) {
-                    await window.dbService.deleteBanner(id);
+                if (confirm("ลบแบนเนอร์?")) {
+                    await window.dbService.deleteBanner(btn.getAttribute('data-id'));
                     this.renderHomepage();
                 }
             });
@@ -709,9 +703,8 @@ class SchoolHubApp {
 
         document.querySelectorAll('.btn-delete-news').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const id = btn.getAttribute('data-id');
-                if (confirm("ลบข่าวประชาสัมพันธ์นี้?")) {
-                    await window.dbService.deleteNewsActivity(id);
+                if (confirm("ลบข่าวสาร?")) {
+                    await window.dbService.deleteNewsActivity(btn.getAttribute('data-id'));
                     this.renderHomepage();
                 }
             });
@@ -719,9 +712,8 @@ class SchoolHubApp {
 
         document.querySelectorAll('.btn-delete-newsletter').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const id = btn.getAttribute('data-id');
-                if (confirm("ลบจดหมายข่าวประชาสัมพันธ์นี้?")) {
-                    await window.dbService.deletePrNewsletter(id);
+                if (confirm("ลบจดหมายข่าว?")) {
+                    await window.dbService.deletePrNewsletter(btn.getAttribute('data-id'));
                     this.renderHomepage();
                 }
             });
@@ -729,9 +721,8 @@ class SchoolHubApp {
 
         document.querySelectorAll('.btn-delete-executive').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const id = btn.getAttribute('data-id');
-                if (confirm("ลบผู้บริหารรายนี้ออกจากทำเนียบ?")) {
-                    await window.dbService.deleteExecutive(id);
+                if (confirm("ลบรายชื่อผู้บริหาร?")) {
+                    await window.dbService.deleteExecutive(btn.getAttribute('data-id'));
                     this.renderHomepage();
                 }
             });
@@ -739,188 +730,171 @@ class SchoolHubApp {
 
         document.querySelectorAll('.btn-delete-link').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const id = btn.getAttribute('data-id');
-                if (confirm("ลบลิงก์นี้ออกจากระบบ?")) {
-                    await window.dbService.deleteQuickLink(id);
+                if (confirm("ลบลิงก์นี้?")) {
+                    await window.dbService.deleteQuickLink(btn.getAttribute('data-id'));
                     this.renderHomepage();
                 }
             });
         });
 
-        // 3. Add actions (Open Modals)
-        const addBannerBtn = document.getElementById('btn-add-banner-cms');
-        if (addBannerBtn) {
-            addBannerBtn.addEventListener('click', () => {
-                this.modalTitle.textContent = 'เพิ่มภาพแบนเนอร์สไลด์';
-                this.modalBody.innerHTML = `
-                    <div class="form-group">
-                        <label>ชื่อ/คำอธิบายแบนเนอร์ <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="title" placeholder="เช่น ยินดีต้อนรับสู่ปีการศึกษา 2569" required>
-                    </div>
-                    <div class="form-group">
-                        <label>ที่อยู่อ้างอิงรูปภาพ (Image URL) <span style="color:var(--color-danger)">*</span></label>
-                        <input type="url" class="form-control" name="image_url" placeholder="ป้อนเว็บลิงก์รูปภาพ เช่น https://..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>ลิงก์ปลายทางเมื่อคลิก (Link URL)</label>
-                        <input type="url" class="form-control" name="link_url" placeholder="เช่น https://..." value="#">
-                    </div>
-                `;
-                this.openModal();
-                this.modalForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(this.modalForm);
-                    await window.dbService.addBanner({
-                        title: formData.get('title'),
-                        image_url: formData.get('image_url'),
-                        link_url: formData.get('link_url')
-                    });
-                    this.closeModal();
-                    this.renderHomepage();
-                };
-            });
-        }
+        document.getElementById('btn-add-banner-cms')?.addEventListener('click', () => {
+            this.modalTitle.textContent = 'เพิ่มภาพแบนเนอร์สไลด์';
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>ชื่อแบนเนอร์ <span style="color:var(--color-danger)">*</span></label>
+                    <input type="text" class="form-control" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>ที่อยู่อ้างอิงรูปภาพ (Image URL) <span style="color:var(--color-danger)">*</span></label>
+                    <input type="url" class="form-control" name="image_url" placeholder="https://..." required>
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์ปลายทาง (Link URL)</label>
+                    <input type="url" class="form-control" name="link_url" value="#">
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addBanner({
+                    title: formData.get('title'),
+                    image_url: formData.get('image_url'),
+                    link_url: formData.get('link_url')
+                });
+                this.closeModal();
+                this.renderHomepage();
+            };
+        });
 
-        const addNewsBtn = document.getElementById('btn-add-news-cms');
-        if (addNewsBtn) {
-            addNewsBtn.addEventListener('click', () => {
-                this.modalTitle.textContent = 'เพิ่มข่าวสารกิจกรรม';
-                this.modalBody.innerHTML = `
-                    <div class="form-group">
-                        <label>หัวข้อข่าวสาร <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="title" placeholder="ใส่หัวข้อข่าวประชาสัมพันธ์" required>
-                    </div>
-                    <div class="form-group">
-                        <label>เนื้อหาโดยย่อ <span style="color:var(--color-danger)">*</span></label>
-                        <textarea class="form-control" name="content" rows="4" placeholder="พิมพ์รายละเอียดย่อของข่าวสาร..." required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>ลิงก์รูปภาพกิจกรรม (Image URL)</label>
-                        <input type="url" class="form-control" name="image_url" placeholder="https://...">
-                    </div>
-                    <div class="form-group">
-                        <label>วันที่ของกิจกรรม</label>
-                        <input type="date" class="form-control" name="date" value="${window.dbService.getTodayDateString()}" required>
-                    </div>
-                `;
-                this.openModal();
-                this.modalForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(this.modalForm);
-                    await window.dbService.addNewsActivity({
-                        title: formData.get('title'),
-                        content: formData.get('content'),
-                        image_url: formData.get('image_url'),
-                        date: formData.get('date')
-                    });
-                    this.closeModal();
-                    this.renderHomepage();
-                };
-            });
-        }
+        document.getElementById('btn-add-news-cms')?.addEventListener('click', () => {
+            this.modalTitle.textContent = 'เพิ่มข่าวสารกิจกรรม';
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>หัวข้อข่าว <span style="color:var(--color-danger)">*</span></label>
+                    <input type="text" class="form-control" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>เนื้อหาโดยย่อ <span style="color:var(--color-danger)">*</span></label>
+                    <textarea class="form-control" name="content" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์รูปภาพ (Image URL)</label>
+                    <input type="url" class="form-control" name="image_url">
+                </div>
+                <div class="form-group">
+                    <label>วันที่กิจกรรม</label>
+                    <input type="date" class="form-control" name="date" value="${window.dbService.getTodayDateString()}" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addNewsActivity({
+                    title: formData.get('title'),
+                    content: formData.get('content'),
+                    image_url: formData.get('image_url'),
+                    date: formData.get('date')
+                });
+                this.closeModal();
+                this.renderHomepage();
+            };
+        });
 
-        const addNewsletterBtn = document.getElementById('btn-add-newsletter-cms');
-        if (addNewsletterBtn) {
-            addNewsletterBtn.addEventListener('click', () => {
-                this.modalTitle.textContent = 'เพิ่มจดหมายข่าวประชาสัมพันธ์';
-                this.modalBody.innerHTML = `
-                    <div class="form-group">
-                        <label>หัวข้อจดหมายข่าว <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="title" placeholder="เช่น จดหมายข่าวประชาสัมพันธ์ ฉบับที่ 03/2569" required>
-                    </div>
-                    <div class="form-group">
-                        <label>รูปภาพปกจดหมายข่าว (Image URL) <span style="color:var(--color-danger)">*</span></label>
-                        <input type="url" class="form-control" name="image_url" placeholder="https://..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>ลิงก์ดาวน์โหลดเอกสารไฟล์แนบ (File/PDF URL)</label>
-                        <input type="url" class="form-control" name="file_url" placeholder="ลิงก์ดาวน์โหลดไฟล์ PDF หรือหน้าเว็บภายนอก" value="#">
-                    </div>
-                `;
-                this.openModal();
-                this.modalForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(this.modalForm);
-                    await window.dbService.addPrNewsletter({
-                        title: formData.get('title'),
-                        image_url: formData.get('image_url'),
-                        file_url: formData.get('file_url'),
-                        date: window.dbService.getTodayDateString()
-                    });
-                    this.closeModal();
-                    this.renderHomepage();
-                };
-            });
-        }
+        document.getElementById('btn-add-newsletter-cms')?.addEventListener('click', () => {
+            this.modalTitle.textContent = 'เพิ่มจดหมายข่าวประชาสัมพันธ์';
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>หัวข้อจดหมายข่าว <span style="color:var(--color-danger)">*</span></label>
+                    <input type="text" class="form-control" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>รูปภาพปก (Image URL) <span style="color:var(--color-danger)">*</span></label>
+                    <input type="url" class="form-control" name="image_url" placeholder="https://..." required>
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์ดาวน์โหลดไฟล์ (PDF URL)</label>
+                    <input type="url" class="form-control" name="file_url" value="#">
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addPrNewsletter({
+                    title: formData.get('title'),
+                    image_url: formData.get('image_url'),
+                    file_url: formData.get('file_url'),
+                    date: window.dbService.getTodayDateString()
+                });
+                this.closeModal();
+                this.renderHomepage();
+            };
+        });
 
-        const addExecBtn = document.getElementById('btn-add-executive-cms');
-        if (addExecBtn) {
-            addExecBtn.addEventListener('click', () => {
-                this.modalTitle.textContent = 'เพิ่มรายชื่อผู้บริหารโรงเรียน';
-                this.modalBody.innerHTML = `
-                    <div class="form-group">
-                        <label>ชื่อ-นามสกุล <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="name" placeholder="ระบุ คำนำหน้า ชื่อ นามสกุล" required>
-                    </div>
-                    <div class="form-group">
-                        <label>ตำแหน่งทางการบริหาร <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="position" placeholder="เช่น ผู้อำนวยการโรงเรียน, รองผู้อำนวยการ..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>ลิงก์รูปถ่าย (Image URL) <span style="color:var(--color-danger)">*</span></label>
-                        <input type="url" class="form-control" name="image_url" placeholder="https://..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>ลำดับการจัดเรียงแสดงผล</label>
-                        <input type="number" class="form-control" name="display_order" value="1" min="1" required>
-                    </div>
-                `;
-                this.openModal();
-                this.modalForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(this.modalForm);
-                    await window.dbService.addExecutive({
-                        name: formData.get('name'),
-                        position: formData.get('position'),
-                        image_url: formData.get('image_url'),
-                        display_order: parseInt(formData.get('display_order'))
-                    });
-                    this.closeModal();
-                    this.renderHomepage();
-                };
-            });
-        }
+        document.getElementById('btn-add-executive-cms')?.addEventListener('click', () => {
+            this.modalTitle.textContent = 'เพิ่มทำเนียบผู้บริหาร';
+            this.modalBody.innerHTML = `
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล <span style="color:var(--color-danger)">*</span></label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>ตำแหน่งทางการบริหาร <span style="color:var(--color-danger)">*</span></label>
+                    <input type="text" class="form-control" name="position" required>
+                </div>
+                <div class="form-group">
+                    <label>ลิงก์รูปถ่าย (Image URL) <span style="color:var(--color-danger)">*</span></label>
+                    <input type="url" class="form-control" name="image_url" placeholder="https://..." required>
+                </div>
+                <div class="form-group">
+                    <label>ลำดับจัดเรียง</label>
+                    <input type="number" class="form-control" name="display_order" value="1" required>
+                </div>
+            `;
+            this.openModal();
+            this.modalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(this.modalForm);
+                await window.dbService.addExecutive({
+                    name: formData.get('name'),
+                    position: formData.get('position'),
+                    image_url: formData.get('image_url'),
+                    display_order: parseInt(formData.get('display_order'))
+                });
+                this.closeModal();
+                this.renderHomepage();
+            };
+        });
 
-        // Link triggers helper
-        const setupLinkAddAction = (buttonId, typeLabel, typeKey, colorClass) => {
-            const btn = document.getElementById(buttonId);
-            if (!btn) return;
-            btn.addEventListener('click', () => {
+        const setupLinkAdd = (buttonId, typeLabel, typeKey) => {
+            document.getElementById(buttonId)?.addEventListener('click', () => {
                 this.modalTitle.textContent = `เพิ่มลิงก์${typeLabel}`;
                 this.modalBody.innerHTML = `
                     <div class="form-group">
                         <label>ชื่อปุ่มลิงก์แสดงผล <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="name" placeholder="เช่น ระบบ SGS, คลังความรู้ สพฐ." required>
+                        <input type="text" class="form-control" name="name" required>
                     </div>
                     <div class="form-group">
-                        <label>ที่อยู่เว็บไซต์เป้าหมาย (URL) <span style="color:var(--color-danger)">*</span></label>
-                        <input type="url" class="form-control" name="url" placeholder="https://..." required>
+                        <label>ที่อยู่อ้างอิง URL <span style="color:var(--color-danger)">*</span></label>
+                        <input type="url" class="form-control" name="url" required>
                     </div>
                     <div class="form-group">
-                        <label>คีย์ไอคอนแสดงข้างลิงก์ (Lucide Icon Name)</label>
+                        <label>ไอคอน</label>
                         <select class="form-control" name="icon">
-                            <option value="link">Link (สัญลักษณ์ทั่วไป)</option>
-                            <option value="globe">Globe (เว็บภายนอก)</option>
+                            <option value="link">Link</option>
+                            <option value="globe">Globe (เว็บหลัก)</option>
                             <option value="external-link">External Link</option>
-                            <option value="mail">Mail (อีเมล)</option>
-                            <option value="wallet">Wallet (การเงิน)</option>
-                            <option value="book-open">Book Open (การเรียน)</option>
-                            <option value="cpu">CPU (คอมพิวเตอร์)</option>
+                            <option value="mail">Mail</option>
+                            <option value="wallet">Wallet</option>
+                            <option value="book-open">Book Open</option>
+                            <option value="cpu">CPU</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>ลำดับจัดเรียง</label>
-                        <input type="number" class="form-control" name="display_order" value="1" min="1" required>
+                        <input type="number" class="form-control" name="display_order" value="1" required>
                     </div>
                 `;
                 this.openModal();
@@ -939,14 +913,13 @@ class SchoolHubApp {
                 };
             });
         };
-
-        setupLinkAddAction('btn-add-link-agency-cms', 'หน่วยงาน', 'agency', 'info');
-        setupLinkAddAction('btn-add-link-eservice-cms', 'บริการ E-Services', 'eservice', 'warning');
+        setupLinkAdd('btn-add-link-agency-cms', 'หน่วยงาน', 'agency');
+        setupLinkAdd('btn-add-link-eservice-cms', 'บริการ E-Services', 'eservice');
     }
 
-    // ==========================================
+    // =========================================================================
     // 2. OFFICE DASHBOARD VIEW RENDERER (Original backend stats)
-    // ==========================================
+    // =========================================================================
     async renderDashboard() {
         const students = await window.dbService.getStudents();
         const teachers = await window.dbService.getTeachers();
@@ -957,7 +930,7 @@ class SchoolHubApp {
         const attendedToday = attSummary.Present + attSummary.Late + attSummary.Excused;
         const attendanceRate = activeStudentsCount > 0 ? Math.round((attendedToday / activeStudentsCount) * 100) : 0;
 
-        let dashboardHTML = `
+        this.viewport.innerHTML = `
             <div class="page-header">
                 <div class="page-title">
                     <h1>แผงควบคุมฝ่ายการจัดการสำนักงานหลังบ้าน</h1>
@@ -975,82 +948,58 @@ class SchoolHubApp {
                             <i data-lucide="check" style="width:14px;height:14px;"></i> Active: ${activeStudentsCount} คน
                         </div>
                     </div>
-                    <div class="stat-icon primary">
-                        <i data-lucide="users"></i>
-                    </div>
+                    <div class="stat-icon primary"><i data-lucide="users"></i></div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-details">
                         <h3>ครูและอาจารย์</h3>
                         <div class="value">${teachers.length} คน</div>
-                        <div class="change">
-                            <i data-lucide="award" style="width:14px;height:14px;"></i> ประจำการปกติ
-                        </div>
+                        <div class="change"><i data-lucide="award" style="width:14px;height:14px;"></i> ประจำการปกติ</div>
                     </div>
-                    <div class="stat-icon success">
-                        <i data-lucide="award"></i>
-                    </div>
+                    <div class="stat-icon success"><i data-lucide="award"></i></div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-details">
                         <h3>ห้องเรียนทั้งหมด</h3>
                         <div class="value">${classes.length} ห้อง</div>
-                        <div class="change">
-                            <i data-lucide="school" style="width:14px;height:14px;"></i> บันทึกในระบบ
-                        </div>
+                        <div class="change"><i data-lucide="school" style="width:14px;height:14px;"></i> บันทึกในระบบ</div>
                     </div>
-                    <div class="stat-icon warning">
-                        <i data-lucide="school"></i>
-                    </div>
+                    <div class="stat-icon warning"><i data-lucide="school"></i></div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-details">
                         <h3>การเข้าเรียนวันนี้</h3>
                         <div class="value">${attendanceRate}%</div>
-                        <div class="change">
-                            <i data-lucide="user-check" style="width:14px;height:14px;"></i> เช็คแล้ว ${attSummary.total} คน
-                        </div>
+                        <div class="change"><i data-lucide="user-check" style="width:14px;height:14px;"></i> เช็คแล้ว ${attSummary.total} คน</div>
                     </div>
-                    <div class="stat-icon info">
-                        <i data-lucide="calendar-check"></i>
-                    </div>
+                    <div class="stat-icon info"><i data-lucide="calendar-check"></i></div>
                 </div>
             </div>
 
             <div class="homepage-grid">
-                <!-- Left Column Graph (72%) -->
                 <div class="card">
                     <div class="card-header">
                         <h2><i data-lucide="bar-chart-3" style="color:var(--color-primary);"></i> วิเคราะห์สรุปการเข้าเรียนประจำวัน</h2>
                     </div>
-                    
                     ${attSummary.total > 0 ? `
                         <div class="dashboard-graph">
                             <div class="graph-bar-container">
-                                <div class="graph-bar" style="height: ${(attSummary.Present/attSummary.total)*100}%;">
-                                    <span class="graph-bar-val">${attSummary.Present}</span>
-                                </div>
+                                <div class="graph-bar" style="height: ${(attSummary.Present/attSummary.total)*100}%;"><span class="graph-bar-val">${attSummary.Present}</span></div>
                                 <span class="graph-label">มาปกติ</span>
                             </div>
                             <div class="graph-bar-container">
-                                <div class="graph-bar" style="height: ${(attSummary.Late/attSummary.total)*100}%; background: var(--color-warning);">
-                                    <span class="graph-bar-val">${attSummary.Late}</span>
-                                </div>
+                                <div class="graph-bar" style="height: ${(attSummary.Late/attSummary.total)*100}%; background: var(--color-warning);"><span class="graph-bar-val">${attSummary.Late}</span></div>
                                 <span class="graph-label">มาสาย</span>
                             </div>
                             <div class="graph-bar-container">
-                                <div class="graph-bar" style="height: ${(attSummary.Excused/attSummary.total)*100}%; background: var(--color-info);">
-                                    <span class="graph-bar-val">${attSummary.Excused}</span>
-                                </div>
+                                <div class="graph-bar" style="height: ${(attSummary.Excused/attSummary.total)*100}%; background: var(--color-info);"><span class="graph-bar-val">${attSummary.Excused}</span></div>
                                 <span class="graph-label">ลาเรียน</span>
                             </div>
                             <div class="graph-bar-container">
-                                <div class="graph-bar" style="height: ${(attSummary.Absent/attSummary.total)*100}%; background: var(--color-danger);">
-                                    <span class="graph-bar-val">${attSummary.Absent}</span>
-                                </div>
+                                <div class="graph-bar" style="height: ${(attSummary.Absent/attSummary.total)*100}%; background: var(--color-danger);"><span class="graph-bar-val">${attSummary.Absent}</span></div>
                                 <span class="graph-label">ขาดเรียน</span>
                             </div>
                         </div>
@@ -1062,7 +1011,6 @@ class SchoolHubApp {
                     `}
                 </div>
 
-                <!-- Right Column Quick Schedule (28%) -->
                 <div class="card">
                     <div class="card-header">
                         <h2><i data-lucide="calendar" style="color:var(--color-warning);"></i> ตารางงานสำนักงาน</h2>
@@ -1086,7 +1034,6 @@ class SchoolHubApp {
                 </div>
             </div>
         `;
-        this.viewport.innerHTML = dashboardHTML;
     }
 
     // =========================================================================
@@ -1113,10 +1060,10 @@ class SchoolHubApp {
                         <td><span class="badge ${statusBadgeClass}">${statusText}</span></td>
                         ${this.currentRole === 'Admin' ? `
                             <td>
-                                <button class="btn btn-secondary btn-sm btn-edit-student" data-id="${s.id}" title="แก้ไขข้อมูล">
+                                <button class="btn btn-secondary btn-sm btn-edit-student" data-id="${s.id}">
                                     <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
                                 </button>
-                                <button class="btn btn-danger btn-sm btn-delete-student" data-id="${s.id}" title="ลบนักเรียน">
+                                <button class="btn btn-danger btn-sm btn-delete-student" data-id="${s.id}">
                                     <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                                 </button>
                             </td>
@@ -1126,7 +1073,7 @@ class SchoolHubApp {
             });
         }
 
-        let studentsHTML = `
+        this.viewport.innerHTML = `
             <div class="page-header">
                 <div class="page-title">
                     <h1>ทะเบียนนักเรียน</h1>
@@ -1134,13 +1081,11 @@ class SchoolHubApp {
                 </div>
                 ${this.currentRole === 'Admin' ? `
                     <button class="btn btn-primary" id="btn-add-student">
-                        <i data-lucide="user-plus"></i>
-                        <span>เพิ่มนักเรียนใหม่</span>
+                        <i data-lucide="user-plus"></i> เพิ่มนักเรียนใหม่
                     </button>
                 ` : ''}
             </div>
 
-            <!-- Filters list -->
             <div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
                 <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
                     <div style="flex:1; min-width:200px;">
@@ -1158,50 +1103,31 @@ class SchoolHubApp {
             <div class="card">
                 <div class="table-responsive">
                     <table class="data-table" id="students-table">
-                        <thead>
-                            <tr>
-                                <th>รหัสนักเรียน</th>
-                                <th>ชื่อ-นามสกุล</th>
-                                <th>เพศ</th>
-                                <th>ห้องเรียน</th>
-                                <th>สถานะ</th>
-                                <th>การดำเนินงาน</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRowsHTML}
-                        </tbody>
+                        <thead><tr><th>รหัสนักเรียน</th><th>ชื่อ-นามสกุล</th><th>เพศ</th><th>ห้องเรียน</th><th>สถานะ</th><th>การดำเนินงาน</th></tr></thead>
+                        <tbody>${tableRowsHTML}</tbody>
                     </table>
                 </div>
             </div>
         `;
 
-        this.viewport.innerHTML = studentsHTML;
-
-        // Hook up student page listeners
         if (this.currentRole === 'Admin') {
             document.getElementById('btn-add-student').addEventListener('click', () => this.showStudentModal());
-            
             document.querySelectorAll('.btn-edit-student').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-id');
-                    const student = students.find(s => s.id === id);
+                    const student = students.find(s => s.id === btn.getAttribute('data-id'));
                     if (student) this.showStudentModal(student);
                 });
             });
-
             document.querySelectorAll('.btn-delete-student').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const id = btn.getAttribute('data-id');
-                    if (confirm("ลบรายชื่อนักเรียนนี้และคะแนนประวัติการมาเรียนทั้งหมด?")) {
-                        await window.dbService.deleteStudent(id);
+                    if (confirm("ลบรายชื่อนักเรียนนี้และคะแนนประวัติทั้งหมด?")) {
+                        await window.dbService.deleteStudent(btn.getAttribute('data-id'));
                         this.renderStudents();
                     }
                 });
             });
         }
 
-        // Filters listeners
         const searchInput = document.getElementById('search-student-input');
         const classFilter = document.getElementById('filter-class-select');
         const rows = document.querySelectorAll('.student-row');
@@ -1209,7 +1135,6 @@ class SchoolHubApp {
         const filterFunc = () => {
             const query = searchInput.value.trim().toLowerCase();
             const classVal = classFilter.value;
-
             rows.forEach(row => {
                 const searchContent = row.getAttribute('data-search-content').toLowerCase();
                 const matchesSearch = query === '' || searchContent.includes(query);
@@ -1217,37 +1142,31 @@ class SchoolHubApp {
                 row.style.display = (matchesSearch && matchesClass) ? '' : 'none';
             });
         };
-
         searchInput.addEventListener('input', filterFunc);
         classFilter.addEventListener('change', filterFunc);
     }
 
-    // Modal Form for Student CRUD
     async showStudentModal(student = null) {
         const classes = await window.dbService.getClasses();
         const isEdit = student !== null;
-        
         this.modalTitle.textContent = isEdit ? 'แก้ไขข้อมูลนักเรียน' : 'เพิ่มนักเรียนใหม่';
         
-        let formHTML = `
+        this.modalBody.innerHTML = `
             <input type="hidden" name="id" value="${isEdit ? student.id : ''}">
-            
             <div class="form-group">
                 <label>รหัสนักเรียน <span style="color:var(--color-danger)">*</span></label>
-                <input type="text" class="form-control" name="student_code" value="${isEdit ? student.student_code : ''}" placeholder="เช่น STD10005" required ${isEdit ? 'readonly' : ''}>
+                <input type="text" class="form-control" name="student_code" value="${isEdit ? student.student_code : ''}" required ${isEdit ? 'readonly' : ''}>
             </div>
-            
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
                     <label>ชื่อจริง <span style="color:var(--color-danger)">*</span></label>
-                    <input type="text" class="form-control" name="first_name" value="${isEdit ? student.first_name : ''}" placeholder="ชื่อจริง" required>
+                    <input type="text" class="form-control" name="first_name" value="${isEdit ? student.first_name : ''}" required>
                 </div>
                 <div class="form-group">
                     <label>นามสกุล <span style="color:var(--color-danger)">*</span></label>
-                    <input type="text" class="form-control" name="last_name" value="${isEdit ? student.last_name : ''}" placeholder="นามสกุล" required>
+                    <input type="text" class="form-control" name="last_name" value="${isEdit ? student.last_name : ''}" required>
                 </div>
             </div>
-
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
                     <label>เพศ</label>
@@ -1264,17 +1183,14 @@ class SchoolHubApp {
                     </select>
                 </div>
             </div>
-
             <div class="form-group">
                 <label>ชื่อผู้ปกครอง</label>
                 <input type="text" class="form-control" name="guardian_name" value="${isEdit ? (student.guardian_name || '') : ''}">
             </div>
-
             <div class="form-group">
                 <label>เบอร์โทรศัพท์ผู้ปกครอง</label>
                 <input type="tel" class="form-control" name="guardian_phone" value="${isEdit ? (student.guardian_phone || '') : ''}">
             </div>
-
             <div class="form-group">
                 <label>สถานะนักเรียน</label>
                 <select class="form-control" name="status">
@@ -1284,8 +1200,6 @@ class SchoolHubApp {
                 </select>
             </div>
         `;
-
-        this.modalBody.innerHTML = formHTML;
         this.openModal();
 
         this.modalForm.onsubmit = async (e) => {
@@ -1311,7 +1225,7 @@ class SchoolHubApp {
                 this.closeModal();
                 this.renderStudents();
             } catch (err) {
-                alert("เกิดข้อผิดพลาดในการบันทึก: " + err.message);
+                alert("บันทึกผิดพลาด: " + err.message);
             }
         };
     }
@@ -1335,12 +1249,8 @@ class SchoolHubApp {
                         <td>${t.phone || '-'}</td>
                         ${this.currentRole === 'Admin' ? `
                             <td>
-                                <button class="btn btn-secondary btn-sm btn-edit-teacher" data-id="${t.id}">
-                                    <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm btn-delete-teacher" data-id="${t.id}">
-                                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-                                </button>
+                                <button class="btn btn-secondary btn-sm btn-edit-teacher" data-id="${t.id}"><i data-lucide="edit-3" style="width:14px;height:14px;"></i></button>
+                                <button class="btn btn-danger btn-sm btn-delete-teacher" data-id="${t.id}"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
                             </td>
                         ` : `<td>-</td>`}
                     </tr>
@@ -1348,7 +1258,7 @@ class SchoolHubApp {
             });
         }
 
-        let teachersHTML = `
+        this.viewport.innerHTML = `
             <div class="page-header">
                 <div class="page-title">
                     <h1>ครูและบุคลากร</h1>
@@ -1356,8 +1266,7 @@ class SchoolHubApp {
                 </div>
                 ${this.currentRole === 'Admin' ? `
                     <button class="btn btn-primary" id="btn-add-teacher">
-                        <i data-lucide="user-plus"></i>
-                        <span>เพิ่มครูคนใหม่</span>
+                        <i data-lucide="user-plus"></i> เพิ่มครูคนใหม่
                     </button>
                 ` : ''}
             </div>
@@ -1369,48 +1278,31 @@ class SchoolHubApp {
             <div class="card">
                 <div class="table-responsive">
                     <table class="data-table" id="teachers-table">
-                        <thead>
-                            <tr>
-                                <th>รหัสคุณครู</th>
-                                <th>ชื่อ-นามสกุล</th>
-                                <th>อีเมล</th>
-                                <th>เบอร์โทร</th>
-                                <th>การดำเนินงาน</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRowsHTML}
-                        </tbody>
+                        <thead><tr><th>รหัสคุณครู</th><th>ชื่อ-นามสกุล</th><th>อีเมล</th><th>เบอร์โทร</th><th>การดำเนินงาน</th></tr></thead>
+                        <tbody>${tableRowsHTML}</tbody>
                     </table>
                 </div>
             </div>
         `;
 
-        this.viewport.innerHTML = teachersHTML;
-
         if (this.currentRole === 'Admin') {
             document.getElementById('btn-add-teacher').addEventListener('click', () => this.showTeacherModal());
-            
             document.querySelectorAll('.btn-edit-teacher').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-id');
-                    const teacher = teachers.find(t => t.id === id);
+                    const teacher = teachers.find(t => t.id === btn.getAttribute('data-id'));
                     if (teacher) this.showTeacherModal(teacher);
                 });
             });
-
             document.querySelectorAll('.btn-delete-teacher').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const id = btn.getAttribute('data-id');
                     if (confirm("ต้องการลบประวัติครูคนนี้ออกจากสารสนเทศ?")) {
-                        await window.dbService.deleteTeacher(id);
+                        await window.dbService.deleteTeacher(btn.getAttribute('data-id'));
                         this.renderTeachers();
                     }
                 });
             });
         }
 
-        // Filters listeners
         const searchInput = document.getElementById('search-teacher-input');
         const rows = document.querySelectorAll('.teacher-row');
         searchInput.addEventListener('input', (e) => {
@@ -1496,9 +1388,7 @@ class SchoolHubApp {
                     <td><strong>${c.name}</strong></td>
                     <td>${c.room || '-'}</td>
                     <td>
-                        <button class="btn btn-danger btn-sm btn-delete-class" data-id="${c.id}">
-                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                        </button>
+                        <button class="btn btn-danger btn-sm btn-delete-class" data-id="${c.id}"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
                     </td>
                 </tr>
             `;
@@ -1512,9 +1402,7 @@ class SchoolHubApp {
                     <td>${s.name}</td>
                     <td>${s.credits} นก.</td>
                     <td>
-                        <button class="btn btn-danger btn-sm btn-delete-subject" data-id="${s.id}">
-                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                        </button>
+                        <button class="btn btn-danger btn-sm btn-delete-subject" data-id="${s.id}"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
                     </td>
                 </tr>
             `;
@@ -2042,7 +1930,6 @@ class SchoolHubApp {
             });
         }
 
-        // Render budget summary allocations breakdown in Sidebar
         let allocationHTML = '';
         Object.keys(summary.categoryBreakdown).forEach(cat => {
             const amt = summary.categoryBreakdown[cat];
@@ -2179,7 +2066,7 @@ class SchoolHubApp {
 
             document.querySelectorAll('.btn-delete-tx').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    if (confirm("คุณแน่ใจใช่หรือไม่ที่จะลบรายการธุรกรรมการเงินนี้ออกจากประวัติ?")) {
+                    if (confirm("ลบธุรกรรมการเงินนี้ออกจากประวัติ?")) {
                         await window.dbService.deleteBudgetTransaction(btn.getAttribute('data-id'));
                         this.renderBudgeting();
                     }
@@ -2193,10 +2080,10 @@ class SchoolHubApp {
     // =========================================================================
     async renderMediaLibrary() {
         const items = await window.dbService.getMediaItems();
+        const loggedIn = this.currentRole === 'Admin' || this.currentRole === 'Teacher';
 
         const renderItemsList = (filterSubject = '') => {
             const filtered = filterSubject ? items.filter(i => i.subject === filterSubject) : items;
-            
             let gridHTML = '';
             if (filtered.length === 0) {
                 gridHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 3rem; color:var(--text-muted);">
@@ -2216,7 +2103,7 @@ class SchoolHubApp {
                                     <i data-lucide="external-link" style="width:12px;height:12px;"></i> ดาวน์โหลด
                                 </a>
                             </div>
-                            ${this.currentRole === 'Admin' || this.currentRole === 'Teacher' ? `
+                            ${loggedIn ? `
                                 <button class="btn btn-danger btn-sm btn-delete-media" data-id="${i.id}" 
                                     style="position:absolute; top:-10px; right:-10px; width:24px; height:24px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm);">
                                     &times;
@@ -2233,16 +2120,15 @@ class SchoolHubApp {
             <div class="page-header">
                 <div class="page-title">
                     <h1>คลังสื่อการเรียนการสอนและแหล่งเรียนรู้</h1>
-                    <p>รวมศูนย์รวมใบงาน คลังวิดีโอ สไลด์เฉลยคำตอบสำหรับครูผู้สอนและนักเรียน</p>
+                    <p>รวมศูนย์ใบงาน คลังวิดีโอ สไลด์เฉลยความรู้สำหรับทุกคน</p>
                 </div>
-                ${this.currentRole === 'Admin' || this.currentRole === 'Teacher' ? `
+                ${loggedIn ? `
                     <button class="btn btn-primary" id="btn-add-media">
                         <i data-lucide="upload"></i> อัปโหลดคลังสื่อใหม่
                     </button>
                 ` : ''}
             </div>
 
-            <!-- Subject category selectors -->
             <div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;" id="media-filters-wrapper">
                     <button class="btn btn-primary btn-sm btn-media-filter active" data-subject="">ทั้งหมด</button>
@@ -2259,7 +2145,6 @@ class SchoolHubApp {
         `;
         lucide.createIcons();
 
-        // Register filter listeners
         const filters = document.querySelectorAll('.btn-media-filter');
         const container = document.getElementById('media-cards-container');
 
@@ -2279,14 +2164,13 @@ class SchoolHubApp {
             });
         });
 
-        // Add upload media listener
-        if (this.currentRole === 'Admin' || this.currentRole === 'Teacher') {
+        if (loggedIn) {
             document.getElementById('btn-add-media').addEventListener('click', () => {
                 this.modalTitle.textContent = 'อัปโหลดแบ่งปันคลังสื่อเรียนรู้';
                 this.modalBody.innerHTML = `
                     <div class="form-group">
                         <label>หัวข้อ/ชื่อสื่อการสอน <span style="color:var(--color-danger)">*</span></label>
-                        <input type="text" class="form-control" name="title" placeholder="เช่น สไลด์เฉลยบทที่ 1 เคมีทั่วไป" required>
+                        <input type="text" class="form-control" name="title" required>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
                         <div class="form-group">
@@ -2312,12 +2196,12 @@ class SchoolHubApp {
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>ลิงก์ปลายทางสื่อไฟล์ PDF/วิดีโอ (Link URL) <span style="color:var(--color-danger)">*</span></label>
+                        <label>ลิงก์ปลายทางสื่อไฟล์ (Link URL) <span style="color:var(--color-danger)">*</span></label>
                         <input type="url" class="form-control" name="link_url" placeholder="https://..." required>
                     </div>
                     <div class="form-group">
-                        <label>รายละเอียด/ขอบเขตการเรียนรู้</label>
-                        <textarea class="form-control" name="description" rows="3" placeholder="ระบุรายละเอียดย่อ..."></textarea>
+                        <label>รายละเอียด</label>
+                        <textarea class="form-control" name="description" rows="2"></textarea>
                     </div>
                 `;
                 this.openModal();
@@ -2343,7 +2227,7 @@ class SchoolHubApp {
         document.querySelectorAll('.btn-delete-media').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (confirm("ยืนยันลบสื่อการเรียนรู้นี้ออกห้องสมุด?")) {
+                if (confirm("ยืนยันลบสื่อการเรียนรู้นี้?")) {
                     await window.dbService.deleteMediaItem(btn.getAttribute('data-id'));
                     this.renderMediaLibrary();
                 }
@@ -2351,77 +2235,58 @@ class SchoolHubApp {
         });
     }
 
-    // ==========================================
+    // =========================================================================
     // 10. SETTINGS VIEW RENDERER (Connection Panel)
-    // ==========================================
+    // =========================================================================
     async renderSettings() {
         const urlInputVal = localStorage.getItem('supabase_url') || window.SUPABASE_CONFIG?.url || '';
         const keyInputVal = localStorage.getItem('supabase_anon_key') || window.SUPABASE_CONFIG?.anonKey || '';
 
-        let settingsHTML = `
+        this.viewport.innerHTML = `
             <div class="page-header">
                 <div class="page-title">
                     <h1>แผงควบคุมการตั้งค่าระบบและการเชื่อมต่อฐานข้อมูล</h1>
-                    <p>คุณสามารถตั้งค่าการเชื่อมต่อระหว่างเว็บไซต์กับคลัสเตอร์ฐานข้อมูล Supabase เพื่อให้ข้อมูลคงอยู่ถาวร</p>
+                    <p>คุณสามารถตั้งค่าการเชื่อมต่อฐานข้อมูล Supabase เพื่อให้ข้อมูลคงอยู่ถาวร</p>
                 </div>
             </div>
 
             <div class="card" style="max-width:650px; margin:0 auto;">
                 <div class="card-header">
-                    <h2>
-                        <i data-lucide="database" style="color:var(--color-primary)"></i>
-                        เชื่อมต่อบริการฐานข้อมูล Supabase
-                    </h2>
+                    <h2><i data-lucide="database" style="color:var(--color-primary)"></i> เชื่อมต่อฐานข้อมูล Supabase</h2>
                 </div>
 
                 <div class="info-alert">
-                    <p><strong>💡 วิธีการรับข้อมูลการเชื่อมต่อ Supabase:</strong></p>
+                    <p><strong>💡 วิธีการเชื่อมต่อ:</strong></p>
                     <ol style="margin-left: 1.5rem; margin-top: 0.5rem; display:flex; flex-direction:column; gap:0.25rem;">
-                        <li>สมัครและสร้างโครงการใหม่ที่ <strong>supabase.com</strong></li>
+                        <li>สร้างโครงการใหม่ที่ <strong>supabase.com</strong></li>
                         <li>เข้าไปที่เมนู <strong>Project Settings > API</strong></li>
-                        <li>คัดลอกค่า <strong>Project URL</strong> และ <strong>anon (public) key</strong> มาป้อนในกล่องข้อความด้านล่าง</li>
-                        <li>เปิด SQL Editor และนำชุดคำสั่งจากไฟล์ <code>schema.sql</code> ของโปรเจกต์นี้ไปสั่งรันเพื่อสร้างตารางข้อมูล</li>
+                        <li>คัดลอกค่า <strong>Project URL</strong> และ <strong>anon (public) key</strong> มาป้อน</li>
+                        <li>รันชุดคำสั่งในไฟล์ <code>schema.sql</code> ของโปรเจกต์นี้ในหน้า SQL Editor เพื่อเตรียมตารางข้อมูล</li>
                     </ol>
                 </div>
 
                 <form id="settings-db-form">
                     <div class="form-group">
                         <label>Supabase Project URL</label>
-                        <input type="url" class="form-control" id="settings-supabase-url" 
-                            placeholder="เช่น https://xxxx.supabase.co" value="${urlInputVal}">
+                        <input type="url" class="form-control" id="settings-supabase-url" value="${urlInputVal}" required>
                     </div>
-
                     <div class="form-group">
                         <label>Supabase Anon (Public) Key</label>
-                        <textarea class="form-control" id="settings-supabase-key" rows="3" 
-                            placeholder="ใส่รหัส public key ยาวๆ..." style="resize:none;">${keyInputVal}</textarea>
+                        <textarea class="form-control" id="settings-supabase-key" rows="3" style="resize:none;" required>${keyInputVal}</textarea>
                     </div>
-
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color);">
-                        <button type="button" class="btn btn-secondary btn-danger" id="btn-reset-db-settings" style="background-color:rgba(239, 68, 68, 0.08);">
-                            <i data-lucide="trash" style="width:16px;height:16px;"></i> ยกเลิกการเชื่อมต่อ
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i data-lucide="save" style="width:16px;height:16px;"></i> บันทึกและรีสตาร์ทระบบ
-                        </button>
+                        <button type="button" class="btn btn-secondary btn-danger" id="btn-reset-db-settings">ยกเลิกการเชื่อมต่อ</button>
+                        <button type="submit" class="btn btn-primary">บันทึกและรีสตาร์ทระบบ</button>
                     </div>
                 </form>
             </div>
         `;
 
-        this.viewport.innerHTML = settingsHTML;
-
-        // Settings Form listeners
         const form = document.getElementById('settings-db-form');
         form.onsubmit = async (e) => {
             e.preventDefault();
             const urlVal = document.getElementById('settings-supabase-url').value.trim();
             const keyVal = document.getElementById('settings-supabase-key').value.trim();
-
-            if (!urlVal || !keyVal) {
-                alert("กรุณากรอกทั้งข้อมูล URL และ Anon Key ด้วยครับ");
-                return;
-            }
 
             try {
                 const testClient = window.supabase.createClient(urlVal, keyVal);
@@ -2430,16 +2295,15 @@ class SchoolHubApp {
                 
                 window.dbService.saveConnectionSettings(urlVal, keyVal);
                 alert("เชื่อมต่อฐานข้อมูล Supabase สำเร็จ! 🚀");
-                
                 await this.init();
                 window.location.hash = 'homepage';
             } catch (err) {
-                alert("ไม่สามารถเชื่อมต่อได้: " + err.message + "\n\nคำแนะนำ: ตรวจสอบความถูกต้องของข้อมูล และอย่าลืมรัน schema.sql บน Supabase ด้วยนะครับ");
+                alert("เชื่อมต่อล้มเหลว: " + err.message + "\n\nคำแนะนำ: ตรวจสอบ URL/Key และตรวจสอบว่ารันสคริปต์ sql เรียบร้อยแล้ว");
             }
         };
 
         document.getElementById('btn-reset-db-settings').addEventListener('click', async () => {
-            if (confirm("ยกเลิกการเชื่อมต่อ Supabase เพื่อกลับไปใช้ระบบจำลอง (LocalStorage) หรือไม่?")) {
+            if (confirm("ยกเลิกการเชื่อมต่อ Supabase หรือไม่?")) {
                 window.dbService.clearConnectionSettings();
                 alert("สลับกลับมาใช้โหมดจำลองสำเร็จ");
                 await this.init();
@@ -2462,7 +2326,6 @@ class SchoolHubApp {
         this.modalForm.onsubmit = null;
     }
 
-    // Handle global search filter
     handleGlobalSearch(query) {
         if (this.currentView === 'students') {
             const rows = document.querySelectorAll('.student-row');
