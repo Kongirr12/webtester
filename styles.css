@@ -121,7 +121,7 @@ button, input, select, textarea {
     transition: width var(--transition-normal);
 }
 
-/* Dynamic Sidebar Hiding */
+/* Dynamic Sidebar Hiding (WordPress style) */
 .sidebar-hidden .sidebar {
     display: none !important;
 }
@@ -257,11 +257,11 @@ button, input, select, textarea {
     display: flex;
 }
 
-/* Top Navigation Links (Public Menu) */
+/* Top Navigation Links (Public Menu) with Submenu Dropdown Support */
 .top-nav-links {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
     margin-right: auto;
     margin-left: 1.5rem;
 }
@@ -275,12 +275,56 @@ button, input, select, textarea {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    cursor: pointer;
     transition: all var(--transition-fast);
+    position: relative;
 }
 
 .top-nav-item:hover, .top-nav-item.active {
     color: var(--color-primary);
     background-color: rgba(99, 102, 241, 0.08);
+}
+
+/* Dropdown Menu structures */
+.top-nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.top-nav-dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--bg-card);
+    min-width: 200px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0;
+    z-index: 500;
+    margin-top: 0.25rem;
+    animation: fadeIn var(--transition-fast);
+}
+
+.top-nav-dropdown:hover .top-nav-dropdown-content {
+    display: block;
+}
+
+.top-nav-dropdown-content a {
+    color: var(--text-main);
+    padding: 0.65rem 1rem;
+    text-decoration: none;
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.top-nav-dropdown-content a:hover {
+    background-color: var(--bg-card-hover);
+    color: var(--color-primary);
+    padding-left: 1.25rem;
 }
 
 .header-search {
@@ -290,16 +334,16 @@ button, input, select, textarea {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: 0.4rem 0.75rem;
-    width: 220px;
+    width: 200px;
     gap: 0.5rem;
-    margin-right: 1rem;
+    margin-right: 0.5rem;
     transition: all var(--transition-fast);
 }
 
 .header-search:focus-within {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-    width: 260px;
+    width: 250px;
 }
 
 .header-search input {
@@ -414,6 +458,107 @@ button, input, select, textarea {
     color: var(--text-muted);
 }
 
+/* Hide admin role switcher & user profiles on Public routes */
+body.public-route .role-selector,
+body.public-route .user-profile,
+body.public-route #cms-toggle-wrapper {
+    display: none !important;
+}
+
+/* Fullscreen Login Page Styles */
+body.login-active {
+    background: radial-gradient(circle at center, #1e1b4b, #090d16) !important;
+}
+
+body.login-active .sidebar,
+body.login-active .main-header {
+    display: none !important;
+}
+
+body.login-active .page-viewport {
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
+    padding: 2.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    animation: slideInModal var(--transition-normal);
+}
+
+.login-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.login-logo-icon {
+    background: linear-gradient(135deg, var(--color-primary), #818cf8);
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-indigo);
+    font-size: 1.5rem;
+}
+
+.login-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.login-subtitle {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.login-form-group {
+    margin-bottom: 1.25rem;
+}
+
+.login-form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 0.5rem;
+}
+
+.login-form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    outline: none;
+    transition: all var(--transition-fast);
+}
+
+.login-form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+}
+
 /* Page Viewport Container */
 .page-viewport {
     padding: 2rem;
@@ -425,26 +570,6 @@ button, input, select, textarea {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-/* 4. Common Components Styles */
-.page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-}
-
-.page-title h1 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-}
-
-.page-title p {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin-top: 0.25rem;
 }
 
 /* Buttons */
@@ -1148,7 +1273,7 @@ button, input, select, textarea {
     line-height: 1.5;
 }
 
-/* Sidebar: Executive ทำเนียบผู้บริหาร */
+/* Sidebar: Executive à¸—à¸³à¹€à¸™à¸µà¸¢à¸šà¸œà¸¹à¹‰à¸šà¸£à¸´à¸«à¸²à¸£ */
 .executives-sidebar-list {
     display: flex;
     flex-direction: column;
